@@ -36,7 +36,7 @@ Out of scope for v1.0:
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and docs exist | Rehearse restore on a clean machine |
-| UX | Make workflows self-explanatory | User guide and AI mode indicator exist | Improve empty/error states and onboarding |
+| UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and dismissible tips |
 | AI Quality | Improve answer reliability | RAG citations and model config exist | Add prompt/version evaluation cases |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist docs exist | Maintain iteration records and release notes |
 
@@ -92,12 +92,26 @@ Delivered scope:
 
 Goal: make the first-run experience understandable without developer guidance.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-005 Product Onboarding and UX Quality](iterations/2026-05-29-i005-product-onboarding-ux.md)
+
+Delivered scope:
 
 - Improve empty states and first-course guidance.
-- Add visible system status explanations.
-- Add user-facing troubleshooting notes for offline AI mode and failed ingestion.
+- Make Q&A explain when documents are not ready for retrieval.
+- Add user-facing troubleshooting notes for failed ingestion.
 - Add focused frontend tests for first-run flows.
+
+### I-006 AI Quality and Retrieval Confidence
+
+Goal: make answer quality easier to evaluate before a private release.
+
+Default scope:
+
+- Add prompt and citation evaluation fixtures.
+- Add deterministic retrieval tests for weak/no context cases.
+- Document how operators should validate DeepSeek output before release.
 
 ## Release Gate
 

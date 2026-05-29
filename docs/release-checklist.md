@@ -31,6 +31,13 @@ Use this checklist before tagging or distributing a private deployment release.
 - Behavior, deployment, or operations changes update the relevant `.md` files.
 - [professional-release-roadmap.md](professional-release-roadmap.md) reflects completed and next iterations.
 
+## Product UX
+
+- First-run state explains that the user should create the first course.
+- A course with no searchable documents explains that materials must be uploaded and parsed before Q&A.
+- Failed document parsing shows the failure reason, retry action, and troubleshooting guidance.
+- Answers without citations tell the user to upload or choose more relevant materials.
+
 ## Build and Tests
 
 ```powershell

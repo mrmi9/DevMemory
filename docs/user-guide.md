@@ -25,6 +25,8 @@ The login bar shows the current AI mode:
 
 The new course becomes the active course.
 
+If this is the first time using DevMemory, the course panel explains that the first step is creating a course. All later materials, Q&A, study assets, mind maps, and progress are grouped under the active course.
+
 ## Upload Materials
 
 1. Select a course.
@@ -34,9 +36,13 @@ The new course becomes the active course.
 
 When the worker completes, the document status becomes ready and chunks become available for retrieval.
 
+If parsing fails, open the document detail view. DevMemory shows the worker error, a retry action, and troubleshooting guidance. Start with retry; if it fails again, check whether the source file is damaged, scanned too poorly for OCR, or better replaced with a clean PDF, Word, Markdown, or image note.
+
 ## Ask Questions
 
 Use the knowledge-base Q&A panel after documents are ready.
+
+The ask button is available after a course is selected and at least one uploaded document has searchable chunks. If the panel says there are no searchable materials yet, upload a document and wait for parsing to finish.
 
 Good questions:
 
@@ -45,6 +51,8 @@ Good questions:
 - Compare two concepts from the uploaded notes.
 
 Answers include source citations when relevant chunks are found.
+
+If an answer has no citations, treat it as a signal that the selected materials are insufficient. Upload more relevant notes or narrow the document filter before asking again.
 
 ## Generate Learning Materials
 

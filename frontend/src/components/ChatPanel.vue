@@ -25,6 +25,18 @@ const filteredSessions = computed(() => {
   return sessions.value.filter((session) => session.title.toLowerCase().includes(keyword))
 })
 const selectedAskDocumentIds = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)).map((document) => document.id))
+const searchableDocuments = computed(() => documents.value.filter((document) => document.chunk_count > 0 && !['failed', 'uploaded', 'processing'].includes(document.status)))
+const askDisabled = computed(() => busy.value || !store.selectedCourseId || !searchableDocuments.value.length)
+const emptyAnswerTitle = computed(() => {
+  if (!store.selectedCourseId) return '先创建或选择课程'
+  if (!searchableDocuments.value.length) return '还没有可检索资料'
+  return '开始一次课程问答'
+})
+const emptyAnswerDetail = computed(() => {
+  if (!store.selectedCourseId) return '登录后创建课程，DevMemory 会把后续资料、问答和复习内容归档到课程下。'
+  if (!searchableDocuments.value.length) return '先在课程资料库上传并等待解析完成，再向知识库提问。'
+  return '选择课程并上传资料后，可以直接提问，例如：帮我总结 SNMP 协议考试重点。'
+})
 
 watch(
   () => store.selectedCourseId,
@@ -218,7 +230,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
       </label>
     </div>
     <textarea v-model="question" rows="4" placeholder="输入你的问题"></textarea>
-    <button data-testid="ask-button" @click="ask" :disabled="busy">
+    <button data-testid="ask-button" @click="ask" :disabled="askDisabled">
       <Send :size="18" />
       <span>{{ busy ? '检索中' : '提问' }}</span>
     </button>
@@ -239,7 +251,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
             <span>{{ citation.document_title }} · 相似度 {{ citation.similarity.toFixed(2) }}</span>
             <small>{{ citation.text_preview }}</small>
           </button>
-          <span v-if="!message.citations?.length" class="neutral">没有检索到引用资料</span>
+          <span v-if="!message.citations?.length" class="neutral">资料不足，建议上传或选择更相关的资料</span>
         </div>
       </article>
       <aside v-if="citedDocument" class="citation-detail">
@@ -249,8 +261,9 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
       </aside>
       <div v-if="sessionId" class="muted">会话已保存：{{ sessionId }}</div>
     </div>
-    <article v-else class="answer">
-      <pre>选择课程并上传资料后，可以直接提问，例如：帮我总结 SNMP 协议考试重点。</pre>
+    <article v-else class="answer empty-state">
+      <strong>{{ emptyAnswerTitle }}</strong>
+      <p>{{ emptyAnswerDetail }}</p>
     </article>
   </section>
 </template>

@@ -64,6 +64,22 @@ describe('ChatPanel', () => {
       chunk_count: 12,
       latest_job: null
     })
+    vi.mocked(api.listDocuments).mockResolvedValue([
+      {
+        id: 'document-1',
+        course_id: 'course-1',
+        title: 'network.pdf',
+        original_filename: 'network.pdf',
+        kind: 'pdf',
+        status: 'ready',
+        error_message: '',
+        text_preview: 'Full parsed preview for SNMP trap.',
+        created_at: '2026-05-29T14:00:00',
+        updated_at: '2026-05-29T14:01:00',
+        chunk_count: 12,
+        latest_job: null
+      }
+    ])
 
     const wrapper = mount(ChatPanel, {
       global: {
@@ -173,5 +189,23 @@ describe('ChatPanel', () => {
     await flushPromises()
 
     expect(api.ask).toHaveBeenCalledWith('帮我总结 SNMP 协议考试重点', 'course-1', '', ['document-1'])
+  })
+  it('explains the next step when a course has no searchable documents', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useStudyStore().selectedCourseId = 'course-1'
+    vi.mocked(api.listChatSessions).mockResolvedValue([])
+    vi.mocked(api.listDocuments).mockResolvedValue([])
+
+    const wrapper = mount(ChatPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('还没有可检索资料')
+    expect(wrapper.text()).toContain('先在课程资料库上传并等待解析完成')
+    expect(wrapper.find('[data-testid="ask-button"]').attributes('disabled')).toBeDefined()
   })
 })

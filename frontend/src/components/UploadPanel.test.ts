@@ -144,4 +144,48 @@ describe('UploadPanel', () => {
     expect(wrapper.text()).not.toContain('network.pdf')
     expect(wrapper.text()).not.toContain('routing.md')
   })
+
+  it('shows troubleshooting guidance for failed parsing jobs', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useStudyStore()
+    store.selectedCourseId = 'course-1'
+    vi.mocked(api.listDocuments).mockResolvedValue([
+      {
+        id: 'document-1',
+        course_id: 'course-1',
+        title: 'scan.pdf',
+        original_filename: 'scan.pdf',
+        kind: 'pdf',
+        status: 'failed',
+        error_message: 'parse failed',
+        text_preview: '',
+        created_at: '2026-05-29T14:00:00',
+        updated_at: '2026-05-29T14:01:00',
+        chunk_count: 0,
+        latest_job: {
+          id: 'job-2',
+          status: 'failed',
+          progress: 45,
+          error_message: 'OCR timeout'
+        }
+      }
+    ])
+    vi.mocked(api.listDocumentChunks).mockResolvedValue([])
+    vi.mocked(api.listDocumentJobs).mockResolvedValue([])
+
+    const wrapper = mount(UploadPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    await wrapper.find('.document-row').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('解析失败排查')
+    expect(wrapper.text()).toContain('可以先重试解析')
+    expect(wrapper.text()).toContain('OCR timeout')
+  })
 })

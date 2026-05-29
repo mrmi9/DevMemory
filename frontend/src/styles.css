@@ -407,6 +407,34 @@ input[type="checkbox"] {
   text-align: center;
 }
 
+.empty-state,
+.troubleshooting-callout {
+  background: #f8fafc;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  color: #475569;
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.empty-state strong,
+.troubleshooting-callout strong {
+  color: #172033;
+}
+
+.empty-state p,
+.troubleshooting-callout p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.troubleshooting-callout {
+  background: #fff7ed;
+  border-color: #fed7aa;
+}
+
 .document-detail,
 .chunk-list,
 .job-history {

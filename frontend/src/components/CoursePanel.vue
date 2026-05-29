@@ -69,6 +69,10 @@ async function deleteCourse(courseId: string, courseTitle: string) {
         </button>
       </div>
     </div>
+    <article v-if="!store.courses.length" class="empty-state">
+      <strong>从第一门课程开始</strong>
+      <p>创建课程后即可上传资料、提问并生成复习内容。</p>
+    </article>
     <p v-if="message || store.error" class="muted">{{ message || store.error }}</p>
     <form class="stack" @submit.prevent="createCourse">
       <input v-model="title" placeholder="课程名称" />

@@ -20,6 +20,12 @@ const hasProcessingDocuments = computed(() =>
   documents.value.some((document) => ['uploaded', 'processing'].includes(document.status) || document.latest_job?.status === 'queued')
 )
 const selectedDocuments = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)))
+const selectedDocumentFailed = computed(() =>
+  selectedDocument.value?.status === 'failed' || selectedDocument.value?.latest_job?.status === 'failed'
+)
+const selectedDocumentFailureReason = computed(() =>
+  selectedDocument.value?.latest_job?.error_message || selectedDocument.value?.error_message || 'Worker 未返回具体失败原因'
+)
 const helperMessage = computed(() => {
   if (message.value) return message.value
   if (!store.selectedCourseId) return '请先登录并选择课程，再上传资料。'
@@ -279,7 +285,7 @@ function jobStatusClass(job: DocumentJob) {
         </div>
         <div class="detail-actions">
           <button
-            v-if="selectedDocument.status === 'failed' || selectedDocument.latest_job?.status === 'failed'"
+            v-if="selectedDocumentFailed"
             type="button"
             :disabled="deleting"
             @click="retrySelectedDocument"
@@ -293,6 +299,11 @@ function jobStatusClass(job: DocumentJob) {
           </button>
         </div>
       </header>
+      <article v-if="selectedDocumentFailed" class="troubleshooting-callout">
+        <strong>解析失败排查</strong>
+        <p>{{ selectedDocumentFailureReason }}</p>
+        <p>可以先重试解析；如果仍失败，请检查文件是否损坏、是否为可复制文本，或改用清晰的 PDF、Word、Markdown、图片笔记重新上传。</p>
+      </article>
       <div class="document-preview">
         <strong>解析预览</strong>
         <pre>{{ selectedDocument.text_preview || '暂无解析文本，等待 Worker 处理。' }}</pre>
