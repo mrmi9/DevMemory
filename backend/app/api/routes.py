@@ -41,11 +41,14 @@ from app.services.document_parser import detect_document_kind
 from app.services.document_library import serialize_chunk_row, serialize_document_card
 from app.services.embeddings import cosine_similarity, get_embedding_provider, vector_values
 from app.services.llm import DeepSeekClient
+from app.rate_limit import InMemoryRateLimiter
 from app.services.rag import RetrievedChunk, build_rag_prompt
 from app.services.study_library import build_wrong_note_from_question, parse_generated_cards, parse_generated_questions, serialize_generated_question_row, serialize_study_card_row, serialize_wrong_note_row
 from app.services.study_generation import analyze_wrong_note, generate_cards, generate_mindmap, generate_questions
 
 router = APIRouter()
+login_rate_limiter = InMemoryRateLimiter()
+ai_rate_limiter = InMemoryRateLimiter()
 
 
 @router.get("/system/status")
@@ -79,7 +82,8 @@ def system_status(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/auth/login", response_model=LoginResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse:
+def login(payload: LoginRequest, request: Request, db: Session = Depends(get_db)) -> LoginResponse:
+    _enforce_login_rate_limit(request, payload.username)
     user = ensure_default_user(db)
     if payload.username != user.username or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid username or password")
@@ -147,7 +151,7 @@ async def upload_document(
     storage_dir.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid4()}{Path(file.filename or 'upload').suffix.lower()}"
     target = storage_dir / filename
-    target.write_bytes(await file.read())
+    await _write_upload_with_size_limit(file, target, settings.max_upload_bytes)
 
     document = Document(
         user_id=user.id,
@@ -258,7 +262,8 @@ def list_document_jobs(document_id: str, user: User = Depends(get_current_user),
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def chat(payload: ChatRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _enforce_ai_rate_limit(request, user)
     chunks = _retrieve_chunks(db, user.id, payload.question, payload.course_id, payload.document_ids)
     prompt = build_rag_prompt(payload.question, chunks)
     answer = await DeepSeekClient().complete(prompt)
@@ -339,7 +344,8 @@ def list_chat_messages(session_id: str, user: User = Depends(get_current_user), 
 
 
 @router.post("/study/cards", response_model=GeneratedTextResponse)
-async def cards(payload: GenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def cards(payload: GenerateRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _enforce_ai_rate_limit(request, user)
     context = _context_for_generation(db, user.id, payload.topic, payload.course_id, payload.document_ids)
     content = await generate_cards(payload.topic, context, payload.count)
     for front, back in parse_generated_cards(content):
@@ -398,7 +404,8 @@ def delete_study_card(card_id: str, user: User = Depends(get_current_user), db: 
 
 
 @router.post("/study/questions", response_model=GeneratedTextResponse)
-async def questions(payload: GenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def questions(payload: GenerateRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _enforce_ai_rate_limit(request, user)
     context = _context_for_generation(db, user.id, payload.topic, payload.course_id, payload.document_ids)
     content = await generate_questions(payload.topic, context, payload.count)
     for question in parse_generated_questions(content):
@@ -455,7 +462,8 @@ def add_generated_question_to_wrong_notes(question_id: str, user: User = Depends
 
 
 @router.post("/study/wrong-notes", response_model=GeneratedTextResponse)
-async def wrong_notes(payload: WrongNoteRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def wrong_notes(payload: WrongNoteRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _enforce_ai_rate_limit(request, user)
     analysis = await analyze_wrong_note(payload.original_question, payload.user_answer, payload.correct_answer)
     note = WrongNote(
         user_id=user.id,
@@ -491,7 +499,8 @@ def delete_wrong_note(note_id: str, user: User = Depends(get_current_user), db: 
 
 
 @router.post("/mindmaps", response_model=GeneratedTextResponse)
-async def mindmaps(payload: GenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def mindmaps(payload: GenerateRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    _enforce_ai_rate_limit(request, user)
     context = _context_for_generation(db, user.id, payload.topic, payload.course_id, payload.document_ids)
     markdown = await generate_mindmap(payload.topic, context)
     db.add(Mindmap(user_id=user.id, course_id=payload.course_id, title=payload.topic, markdown=markdown))
@@ -567,6 +576,60 @@ def update_progress(
     db.commit()
     db.refresh(record)
     return {"id": record.id, "status": record.status, "mastery": record.mastery}
+
+
+async def _write_upload_with_size_limit(file: UploadFile, target: Path, max_bytes: int) -> None:
+    total = 0
+    try:
+        with target.open("wb") as output:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > max_bytes:
+                    raise HTTPException(status_code=413, detail=f"File exceeds maximum upload size of {max_bytes} bytes")
+                output.write(chunk)
+    except HTTPException:
+        target.unlink(missing_ok=True)
+        raise
+    except OSError as exc:
+        target.unlink(missing_ok=True)
+        raise HTTPException(status_code=500, detail="Failed to store uploaded file") from exc
+
+
+def _enforce_login_rate_limit(request: Request, username: str) -> None:
+    settings = _settings_from_request(request)
+    key = f"login:{_client_ip(request)}:{username.strip().lower()}"
+    login_rate_limiter.assert_allowed(
+        key=key,
+        limit=settings.login_rate_limit_per_minute,
+        window_seconds=60,
+        detail="Too many login attempts",
+    )
+
+
+def _enforce_ai_rate_limit(request: Request, user: User) -> None:
+    settings = _settings_from_request(request)
+    ai_rate_limiter.assert_allowed(
+        key=f"ai:{user.id}",
+        limit=settings.ai_rate_limit_per_minute,
+        window_seconds=60,
+        detail="Too many AI requests",
+    )
+
+
+def _settings_from_request(request: Request):
+    return getattr(request.app.state, "settings", get_settings())
+
+
+def _client_ip(request: Request) -> str:
+    headers = getattr(request, "headers", {})
+    forwarded_for = headers.get("x-forwarded-for", "") if hasattr(headers, "get") else ""
+    if forwarded_for:
+        return forwarded_for.split(",", 1)[0].strip()
+    client = getattr(request, "client", None)
+    return getattr(client, "host", "unknown")
 
 
 def _get_course(db: Session, user_id: str, course_id: str) -> Course:

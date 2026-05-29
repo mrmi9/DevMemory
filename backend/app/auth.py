@@ -41,7 +41,7 @@ def verify_password(password: str, stored_hash: str) -> bool:
 
 def create_token(user_id: str) -> str:
     settings = get_settings()
-    expires = int(time.time()) + 60 * 60 * 24 * 30
+    expires = int(time.time()) + settings.access_token_ttl_minutes * 60
     payload = f"{user_id}:{expires}"
     signature = hmac.new(settings.access_token_secret.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
     return base64.urlsafe_b64encode(f"{payload}:{signature}".encode("utf-8")).decode("ascii")

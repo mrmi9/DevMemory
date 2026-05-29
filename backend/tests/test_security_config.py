@@ -95,3 +95,12 @@ def test_password_hash_uses_pbkdf2_and_verifies_legacy_sha256_hashes():
         "changeme",
         "sha256$1685210512848ca0e13ce7b4635767c0799e0d6928f4357dec691fd675fb156d",
     ) is True
+
+
+def test_security_hardening_defaults_are_configurable():
+    settings = Settings()
+
+    assert settings.access_token_ttl_minutes == 60 * 24
+    assert settings.max_upload_bytes == 50 * 1024 * 1024
+    assert settings.login_rate_limit_per_minute == 5
+    assert settings.ai_rate_limit_per_minute == 30

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     default_username: str = "admin"
     default_password: str = "changeme"
     access_token_secret: str = "change-this-secret"
+    access_token_ttl_minutes: int = 60 * 24
+    max_upload_bytes: int = 50 * 1024 * 1024
+    login_rate_limit_per_minute: int = 5
+    ai_rate_limit_per_minute: int = 30
     cors_origins: list[str] = ["*"]
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="STUDY_")
@@ -33,6 +37,14 @@ def validate_runtime_settings(settings: Settings) -> None:
         raise ValueError("STUDY_ACCESS_TOKEN_SECRET must be changed to a strong value in production")
     if settings.default_password == "changeme" or not settings.default_password.strip():
         raise ValueError("STUDY_DEFAULT_PASSWORD must be changed in production")
+    if settings.access_token_ttl_minutes <= 0:
+        raise ValueError("STUDY_ACCESS_TOKEN_TTL_MINUTES must be greater than zero in production")
+    if settings.max_upload_bytes <= 0:
+        raise ValueError("STUDY_MAX_UPLOAD_BYTES must be greater than zero in production")
+    if settings.login_rate_limit_per_minute <= 0:
+        raise ValueError("STUDY_LOGIN_RATE_LIMIT_PER_MINUTE must be greater than zero in production")
+    if settings.ai_rate_limit_per_minute <= 0:
+        raise ValueError("STUDY_AI_RATE_LIMIT_PER_MINUTE must be greater than zero in production")
     if "*" in settings.cors_origins:
         raise ValueError("STUDY_CORS_ORIGINS must not contain '*' in production")
     if settings.embedding_dimensions != 384:

@@ -13,6 +13,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 - Progress tracking for study cards and course review.
 - DeepSeek integration with offline placeholder mode when no API key is configured.
 - Private deployment health/readiness status at `/api/system/status`.
+- Private deployment hardening: configurable token lifetime, upload size limits, login/AI rate limits, and logout.
 
 ## Private Deployment
 
@@ -26,6 +27,10 @@ copy .env.production.example .env.production
 
 - `STUDY_ACCESS_TOKEN_SECRET`
 - `STUDY_DEFAULT_PASSWORD`
+- `STUDY_ACCESS_TOKEN_TTL_MINUTES`
+- `STUDY_MAX_UPLOAD_BYTES`
+- `STUDY_LOGIN_RATE_LIMIT_PER_MINUTE`
+- `STUDY_AI_RATE_LIMIT_PER_MINUTE`
 - `STUDY_POSTGRES_PASSWORD`
 - `STUDY_DATABASE_URL`
 - `STUDY_CORS_ORIGINS`
@@ -125,6 +130,10 @@ python scripts\smoke_test.py
 
 Release checks are listed in [docs/release-checklist.md](docs/release-checklist.md).
 
+## Security
+
+Private deployment security controls and rotation steps are documented in [docs/security-hardening.md](docs/security-hardening.md).
+
 ## Professional Release Iterations
 
 DevMemory is iterated toward a professional private-deployment release through explicit release iterations. Each iteration records its goal, optimization direction, scope, documentation updates, and acceptance gates.
@@ -156,3 +165,4 @@ End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
 - The embedding provider is selected with `STUDY_EMBEDDING_PROVIDER`.
 - Production mode is enabled with `STUDY_ENVIRONMENT=production`.
 - In production, startup refuses unsafe defaults for `STUDY_ACCESS_TOKEN_SECRET`, `STUDY_DEFAULT_PASSWORD`, wildcard CORS origins, incompatible embedding dimensions, and unwritable upload directories.
+- Login and AI generation rate limits are in-memory for the single-node v1.0 deployment and reset when the backend restarts.

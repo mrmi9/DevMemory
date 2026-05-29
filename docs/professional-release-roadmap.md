@@ -31,11 +31,11 @@ Out of scope for v1.0:
 
 | Track | Goal | Current State | Next Direction |
 | --- | --- | --- | --- |
-| Deployment | Make private deployment repeatable | Production compose and env template exist | Validate upgrade and rollback flows |
+| Deployment | Make private deployment repeatable | Production compose, env template, and ops scripts exist | Validate release rehearsal on a clean machine |
 | Quality | Prevent regressions before release | Backend, frontend, Docker CI exist | Add deeper E2E and migration checks |
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
-| Security | Reduce private deployment risk | Production defaults are rejected | Add rate limits, token rotation, upload size limits |
-| Data Safety | Protect user documents and database | Backup/restore docs exist | Add scripted backup/restore helpers |
+| Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
+| Data Safety | Protect user documents and database | Backup/restore scripts and docs exist | Rehearse restore on a clean machine |
 | UX | Make workflows self-explanatory | User guide and AI mode indicator exist | Improve empty/error states and onboarding |
 | AI Quality | Improve answer reliability | RAG citations and model config exist | Add prompt/version evaluation cases |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist docs exist | Maintain iteration records and release notes |
@@ -77,12 +77,16 @@ Delivered scope:
 
 Goal: reduce risk for private-network deployments.
 
-Default scope:
+Status: completed.
 
-- Add upload size limits and clear errors.
+Record: [2026-05-29 I-004 Security Hardening](iterations/2026-05-29-i004-security-hardening.md)
+
+Delivered scope:
+
+- Add upload size limits and clear `413` errors.
 - Add login and AI request rate limiting.
 - Add token expiry configuration and logout support.
-- Document secret rotation.
+- Document secret rotation and v1.0 security boundaries.
 
 ### I-005 Product Onboarding and UX Quality
 

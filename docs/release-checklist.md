@@ -8,9 +8,21 @@ Use this checklist before tagging or distributing a private deployment release.
 - Real `.env.production` is not committed.
 - `STUDY_ENVIRONMENT=production` is set for release testing.
 - `STUDY_ACCESS_TOKEN_SECRET` is strong and at least 32 characters.
+- `STUDY_ACCESS_TOKEN_TTL_MINUTES` is appropriate for the deployment environment.
 - `STUDY_DEFAULT_PASSWORD` is not empty and not `changeme`.
 - `STUDY_CORS_ORIGINS` does not contain `*`.
+- `STUDY_MAX_UPLOAD_BYTES` matches expected document sizes and storage capacity.
+- `STUDY_LOGIN_RATE_LIMIT_PER_MINUTE` and `STUDY_AI_RATE_LIMIT_PER_MINUTE` are positive.
 - `STUDY_POSTGRES_PASSWORD` and `STUDY_DATABASE_URL` match.
+
+## Security
+
+- Review [security-hardening.md](security-hardening.md).
+- Confirm logout removes the browser token and clears local study state.
+- Confirm oversized uploads return HTTP `413` and do not leave partial files behind.
+- Confirm repeated login attempts return HTTP `429`.
+- Confirm repeated AI generation requests return HTTP `429`.
+- Document the access token secret rotation process for the target operator.
 
 ## Iteration Governance
 

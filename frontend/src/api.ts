@@ -142,6 +142,15 @@ export class ApiClient {
     localStorage.setItem('study_token', this.token)
   }
 
+  logout() {
+    this.token = ''
+    localStorage.removeItem('study_token')
+  }
+
+  hasToken() {
+    return Boolean(this.token)
+  }
+
   async systemStatus() {
     return this.request<SystemStatus>('/system/status', {}, false)
   }

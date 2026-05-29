@@ -16,6 +16,14 @@ export const useStudyStore = defineStore('study', {
     async login(username = 'admin', password = 'changeme') {
       await api.login(username, password)
     },
+    logout() {
+      api.logout()
+      this.courses = []
+      this.selectedCourseId = ''
+      this.progressRefreshKey = 0
+      this.busy = false
+      this.error = ''
+    },
     async loadCourses() {
       this.error = ''
       try {
