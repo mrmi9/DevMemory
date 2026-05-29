@@ -58,6 +58,7 @@ export interface ChatResponse {
     similarity: number
   }>
   session_id: string
+  assistant_message_id?: string
   retrieval_confidence?: string
   quality_notes?: string[]
 }
@@ -206,6 +207,27 @@ export class ApiClient {
 
   async deleteDocument(documentId: string) {
     return this.request<{ ok: boolean }>(`/documents/${documentId}`, { method: 'DELETE' })
+  }
+
+  async saveChatMessageAsStudyCard(messageId: string) {
+    return this.request<StudyCard>(`/chat/messages/${messageId}/study-card`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+  }
+
+  async generateQuestionsFromChatMessage(messageId: string, count = 5) {
+    return this.request<GeneratedQuestion[]>(`/chat/messages/${messageId}/study-questions`, {
+      method: 'POST',
+      body: JSON.stringify({ count })
+    })
+  }
+
+  async addChatMessageToWrongNotes(messageId: string) {
+    return this.request<WrongNote>(`/chat/messages/${messageId}/wrong-note`, {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
   }
 
   async ask(question: string, courseId?: string, sessionId?: string, documentIds: string[] = []) {

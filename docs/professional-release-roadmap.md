@@ -36,7 +36,7 @@ Out of scope for v1.0:
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and clean restore evidence gate exist | Preserve restore evidence during release tagging |
-| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, and document-library power controls exist | Add answer-to-study-asset actions |
+| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, document-library power controls, and answer-to-study actions exist | Add daily review queue |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, restore evidence, and release notes docs exist | Keep docs current while product features evolve |
 
@@ -197,13 +197,30 @@ Delivered scope:
 
 Goal: let high-quality Q&A answers become durable review assets.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-012 Answer-to-Study Asset Pipeline](iterations/2026-05-29-i012-answer-to-study-asset-pipeline.md)
+
+Delivered scope:
 
 - Save an assistant answer as one or more review cards.
 - Generate practice questions from the latest answer.
 - Add answer-derived weak points or mistakes to wrong notes.
 - Preserve citation/source context when creating study assets.
 - Keep low-confidence or no-citation answers from silently polluting the review set.
+- Start a follow-up question from an answer.
+- Restrict the next question to the cited document set.
+
+### I-013 Daily Review Queue
+
+Goal: turn review from manual mastery editing into a daily task.
+
+Default scope:
+
+- Show today’s due review cards.
+- Prioritize low-mastery cards and recent wrong notes.
+- Add due/overdue review status to the progress panel.
+- Record review actions without requiring users to hunt through all generated cards.
 
 ## Release Gate
 

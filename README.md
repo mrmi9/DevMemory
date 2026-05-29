@@ -10,6 +10,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 - Power-user document controls for search, status filtering, sorting, tags, chapters, duplicate warnings, and batch retry.
 - Background parsing, chunking, embedding, and pgvector storage.
 - Course-scoped Q&A with cited source chunks.
+- Answer-to-study actions that save cited answers as review cards, practice questions, or focus notes.
 - Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
 - Guided learning loop from course creation to upload, parsing, Q&A, generated assets, review, and weakness review.
 - Progress tracking for study cards and course review.

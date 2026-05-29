@@ -83,6 +83,16 @@ Assistant answers also show retrieval confidence:
 - `medium`: context exists but should be checked against the citations.
 - `weak` or `none`: upload or choose more relevant materials before trusting the answer.
 
+When an answer has citations, use the answer actions to continue the learning loop:
+
+- Save the answer as a review card.
+- Generate five practice questions from the answer.
+- Add the answer to wrong notes or key points.
+- Start a follow-up question from that answer.
+- Switch the question scope to only the cited documents before asking again.
+
+Answers without citations do not show study-asset actions, so low-context output is not silently added to the review set.
+
 ## Generate Learning Materials
 
 Use the study materials panel to generate:

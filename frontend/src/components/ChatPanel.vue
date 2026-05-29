@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { MessageSquare, Pencil, RefreshCw, Send, Trash2 } from 'lucide-vue-next'
+import { ClipboardList, FileText, Layers, MessageSquare, NotebookPen, Pencil, RefreshCw, Send, Trash2 } from 'lucide-vue-next'
 import { api, type ChatResponse, type ChatSession, type DocumentItem } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -9,10 +9,13 @@ const question = ref('帮我总结 SNMP 协议考试重点')
 const result = ref<ChatResponse | null>(null)
 const busy = ref(false)
 const sessionBusy = ref('')
+const assetBusy = ref('')
+const assetMessages = ref<string[]>([])
 const error = ref('')
 const sessionId = ref('')
 const sessionSearch = ref('')
 const messages = ref<Array<{
+  id?: string
   role: 'user' | 'assistant'
   content: string
   citations?: ChatResponse['citations']
@@ -101,6 +104,7 @@ async function openSession(session: ChatSession) {
   try {
     const loaded = await api.listChatMessages(session.id)
     messages.value = loaded.map((message) => ({
+      id: message.id,
       role: message.role,
       content: message.content,
       citations: message.citations
@@ -162,6 +166,7 @@ async function ask() {
     result.value = await api.ask(currentQuestion, store.selectedCourseId, sessionId.value, selectedAskDocumentIds.value)
     sessionId.value = result.value.session_id
     messages.value.push({
+      id: result.value.assistant_message_id,
       role: 'assistant',
       content: result.value.answer,
       citations: result.value.citations,
@@ -174,6 +179,71 @@ async function ask() {
     messages.value = messages.value.filter((message) => message.content !== currentQuestion || message.role !== 'user')
   } finally {
     busy.value = false
+  }
+}
+
+function canCreateStudyAsset(message: { id?: string; role: string; citations?: ChatResponse['citations']; retrieval_confidence?: string }) {
+  if (message.role !== 'assistant' || !message.id || !message.citations?.length) return false
+  return !['weak', 'none'].includes(message.retrieval_confidence ?? '')
+}
+
+function canUseAnswerContext(message: { role: string; citations?: ChatResponse['citations'] }) {
+  return message.role === 'assistant' && Boolean(message.citations?.length)
+}
+
+function startFollowUp(message: { content: string }) {
+  question.value = `基于上面的回答，继续解释：${message.content.slice(0, 80)}`
+}
+
+function useCitedDocuments(message: { citations?: ChatResponse['citations'] }) {
+  const ids = new Set((message.citations ?? []).map((citation) => citation.document_id))
+  selectedDocumentIds.value = ids
+  noteAssetMessage('已切换为只基于引用资料提问')
+}
+
+function noteAssetMessage(message: string) {
+  assetMessages.value = [...assetMessages.value.filter((item) => item !== message), message].slice(-4)
+}
+
+async function saveAnswerAsCard(message: { id?: string }) {
+  if (!message.id) return
+  assetBusy.value = `card:${message.id}`
+  try {
+    await api.saveChatMessageAsStudyCard(message.id)
+    noteAssetMessage('已保存为复习卡片')
+    store.markProgressChanged()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : String(caught)
+  } finally {
+    assetBusy.value = ''
+  }
+}
+
+async function generateAnswerQuestions(message: { id?: string }) {
+  if (!message.id) return
+  assetBusy.value = `questions:${message.id}`
+  try {
+    const questions = await api.generateQuestionsFromChatMessage(message.id, 5)
+    noteAssetMessage(`已生成 ${questions.length} 道练习题`)
+    store.markProgressChanged()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : String(caught)
+  } finally {
+    assetBusy.value = ''
+  }
+}
+
+async function addAnswerToWrongNotes(message: { id?: string }) {
+  if (!message.id) return
+  assetBusy.value = `wrong:${message.id}`
+  try {
+    await api.addChatMessageToWrongNotes(message.id)
+    noteAssetMessage('已加入重点')
+    store.markProgressChanged()
+  } catch (caught) {
+    error.value = caught instanceof Error ? caught.message : String(caught)
+  } finally {
+    assetBusy.value = ''
   }
 }
 
@@ -269,7 +339,62 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
           </button>
           <span v-if="!message.citations?.length" class="neutral">资料不足，建议上传或选择更相关的资料</span>
         </div>
+        <div v-if="canCreateStudyAsset(message)" class="answer-asset-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="save-answer-card"
+            :disabled="!!assetBusy"
+            @click="saveAnswerAsCard(message)"
+          >
+            <Layers :size="16" />
+            <span>{{ assetBusy === `card:${message.id}` ? '保存中' : '保存为复习卡片' }}</span>
+          </button>
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="generate-answer-questions"
+            :disabled="!!assetBusy"
+            @click="generateAnswerQuestions(message)"
+          >
+            <ClipboardList :size="16" />
+            <span>{{ assetBusy === `questions:${message.id}` ? '生成中' : '生成 5 道练习题' }}</span>
+          </button>
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="add-answer-wrong-note"
+            :disabled="!!assetBusy"
+            @click="addAnswerToWrongNotes(message)"
+          >
+            <NotebookPen :size="16" />
+            <span>{{ assetBusy === `wrong:${message.id}` ? '加入中' : '加入错题/重点' }}</span>
+          </button>
+        </div>
+        <div v-if="canUseAnswerContext(message)" class="answer-asset-actions">
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="follow-up-answer"
+            @click="startFollowUp(message)"
+          >
+            <MessageSquare :size="16" />
+            <span>基于这次回答继续追问</span>
+          </button>
+          <button
+            class="secondary-button"
+            type="button"
+            data-testid="use-cited-documents"
+            @click="useCitedDocuments(message)"
+          >
+            <FileText :size="16" />
+            <span>只基于这些资料重新回答</span>
+          </button>
+        </div>
       </article>
+      <div v-if="assetMessages.length" class="asset-message-list">
+        <p v-for="message in assetMessages" :key="message" class="success-text">{{ message }}</p>
+      </div>
       <aside v-if="citedDocument" class="citation-detail">
         <strong>{{ citedDocument.title }}</strong>
         <small>{{ citedDocument.kind }} · {{ citedDocument.chunk_count }} chunks</small>

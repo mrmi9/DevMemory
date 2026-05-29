@@ -108,6 +108,7 @@ class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation]
     session_id: str
+    assistant_message_id: str | None = None
     retrieval_confidence: str = "unknown"
     quality_notes: list[str] = Field(default_factory=list)
 
@@ -129,6 +130,10 @@ class ChatMessageOut(BaseModel):
     content: str
     citations: list[dict] = Field(default_factory=list)
     created_at: str
+
+
+class ChatAssetRequest(BaseModel):
+    count: int = Field(default=5, ge=1, le=10)
 
 
 class GenerateRequest(BaseModel):

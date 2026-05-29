@@ -12,6 +12,7 @@ from app.models import ChatMessage, ChatSession, Course, Document, DocumentChunk
 from app.schemas import (
     ChatRequest,
     ChatResponse,
+    ChatAssetRequest,
     ChatMessageOut,
     ChatSessionOut,
     ChatSessionUpdate,
@@ -303,12 +304,15 @@ async def chat(payload: ChatRequest, request: Request, user: User = Depends(get_
     ]
     citation_payload = [citation.model_dump() for citation in citations]
     db.add(ChatMessage(session_id=session.id, role="user", content=payload.question, citations=[]))
-    db.add(ChatMessage(session_id=session.id, role="assistant", content=answer, citations=citation_payload))
+    assistant_message = ChatMessage(session_id=session.id, role="assistant", content=answer, citations=citation_payload)
+    db.add(assistant_message)
     db.commit()
+    db.refresh(assistant_message)
     return ChatResponse(
         answer=answer,
         citations=citations,
         session_id=session.id,
+        assistant_message_id=assistant_message.id,
         retrieval_confidence=retrieval_quality.confidence,
         quality_notes=retrieval_quality.notes,
     )
@@ -364,6 +368,62 @@ def list_chat_messages(session_id: str, user: User = Depends(get_current_user), 
         }
         for message in messages
     ]
+
+
+@router.post("/chat/messages/{message_id}/study-card", response_model=StudyCardOut)
+def save_chat_message_as_study_card(message_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    message, session, question = _get_chat_answer_context(db, user.id, message_id)
+    card = StudyCard(
+        user_id=user.id,
+        course_id=session.course_id,
+        front=_truncate(question, 240),
+        back=_answer_with_sources(message.content, message.citations),
+        source="chat",
+    )
+    db.add(card)
+    db.commit()
+    db.refresh(card)
+    return serialize_study_card_row(card)
+
+
+@router.post("/chat/messages/{message_id}/study-questions", response_model=list[GeneratedQuestionOut])
+async def generate_questions_from_chat_message(
+    message_id: str,
+    payload: ChatAssetRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    message, session, question = _get_chat_answer_context(db, user.id, message_id)
+    context = _answer_with_sources(message.content, message.citations)
+    content = await generate_questions(question, context, payload.count)
+    rows = []
+    for parsed_question in parse_generated_questions(content):
+        row = GeneratedQuestion(user_id=user.id, course_id=session.course_id, **parsed_question)
+        db.add(row)
+        rows.append(row)
+    db.commit()
+    for row in rows:
+        db.refresh(row)
+    return [serialize_generated_question_row(row) for row in rows]
+
+
+@router.post("/chat/messages/{message_id}/wrong-note", response_model=WrongNoteOut)
+def add_chat_message_to_wrong_notes(message_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    message, session, question = _get_chat_answer_context(db, user.id, message_id)
+    note = WrongNote(
+        user_id=user.id,
+        course_id=session.course_id,
+        title=_truncate(question, 200),
+        original_question=question,
+        user_answer="",
+        correct_answer=message.content,
+        analysis=_source_summary(message.citations),
+        tags=["chat-answer", "重点"],
+    )
+    db.add(note)
+    db.commit()
+    db.refresh(note)
+    return serialize_wrong_note_row(note)
 
 
 @router.post("/study/cards", response_model=GeneratedTextResponse)
@@ -660,6 +720,56 @@ def _get_course(db: Session, user_id: str, course_id: str) -> Course:
     if not course or course.user_id != user_id:
         raise HTTPException(status_code=404, detail="Course not found")
     return course
+
+
+def _get_chat_answer_context(db: Session, user_id: str, message_id: str) -> tuple[ChatMessage, ChatSession, str]:
+    message = db.get(ChatMessage, message_id)
+    if not message or message.role != "assistant":
+        raise HTTPException(status_code=404, detail="Assistant message not found")
+    session = db.get(ChatSession, message.session_id)
+    if not session or session.user_id != user_id:
+        raise HTTPException(status_code=404, detail="Assistant message not found")
+    if not message.citations:
+        raise HTTPException(status_code=409, detail="Assistant message has no citations")
+    previous_user_message = (
+        db.query(ChatMessage)
+        .filter(
+            ChatMessage.session_id == message.session_id,
+            ChatMessage.role == "user",
+            ChatMessage.created_at <= message.created_at,
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .first()
+    )
+    question = previous_user_message.content if previous_user_message else session.title
+    return message, session, question.strip() or session.title
+
+
+def _truncate(value: str, limit: int) -> str:
+    compact = value.strip()
+    if len(compact) <= limit:
+        return compact
+    return compact[: limit - 3].rstrip() + "..."
+
+
+def _source_summary(citations: list[dict]) -> str:
+    titles = []
+    seen = set()
+    for citation in citations or []:
+        title = str(citation.get("document_title") or "").strip()
+        if title and title not in seen:
+            titles.append(title)
+            seen.add(title)
+    if not titles:
+        return "来自一次知识库问答，未记录引用来源。"
+    return "来源：" + "、".join(titles[:5])
+
+
+def _answer_with_sources(answer: str, citations: list[dict]) -> str:
+    summary = _source_summary(citations)
+    if summary.startswith("来源："):
+        return f"{answer.strip()}\n\n{summary}"
+    return answer.strip()
 
 
 def _status_for_mastery(mastery: int) -> str:

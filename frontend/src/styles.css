@@ -829,6 +829,27 @@ pre {
   margin-top: 12px;
 }
 
+.answer-asset-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.asset-message-list {
+  display: grid;
+  gap: 8px;
+}
+
+.success-text {
+  background: #ecfdf5;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  color: #047857;
+  margin: 0;
+  padding: 9px 10px;
+}
+
 .quality-strip {
   align-items: flex-start;
   background: #f1f5f9;
