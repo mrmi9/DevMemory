@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { FileText, FileUp, RefreshCw, RotateCcw, Trash2 } from 'lucide-vue-next'
+import { FileText, FileUp, Filter, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-vue-next'
 import { api, type DocumentChunk, type DocumentItem, type DocumentJob } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -11,15 +11,34 @@ const selectedDocumentIds = ref<Set<string>>(new Set())
 const chunks = ref<DocumentChunk[]>([])
 const jobs = ref<DocumentJob[]>([])
 const message = ref('')
+const documentSearch = ref('')
+const statusFilter = ref<'all' | 'searchable' | 'processing' | 'failed'>('all')
+const sortMode = ref<'newest' | 'oldest' | 'type' | 'status'>('newest')
 const loading = ref(false)
 const detailLoading = ref(false)
 const deleting = ref(false)
+const retryingFailed = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | undefined
 
 const hasProcessingDocuments = computed(() =>
   documents.value.some((document) => ['uploaded', 'processing'].includes(document.status) || document.latest_job?.status === 'queued')
 )
 const selectedDocuments = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)))
+const failedDocuments = computed(() => documents.value.filter(isFailedDocument))
+const visibleDocuments = computed(() => {
+  const keyword = documentSearch.value.trim().toLowerCase()
+  return documents.value
+    .filter((document) => {
+      if (statusFilter.value === 'searchable' && !isSearchableDocument(document)) return false
+      if (statusFilter.value === 'processing' && !isProcessingDocument(document)) return false
+      if (statusFilter.value === 'failed' && !isFailedDocument(document)) return false
+      if (!keyword) return true
+      return [document.title, document.original_filename, document.kind, document.text_preview]
+        .some((value) => value.toLowerCase().includes(keyword))
+    })
+    .slice()
+    .sort(compareDocuments)
+})
 const selectedDocumentFailed = computed(() =>
   selectedDocument.value?.status === 'failed' || selectedDocument.value?.latest_job?.status === 'failed'
 )
@@ -89,6 +108,35 @@ function toggleDocumentSelection(documentId: string, checked: boolean) {
   selectedDocumentIds.value = nextSelectedIds
 }
 
+function documentRuntimeStatus(document: DocumentItem) {
+  return document.latest_job?.status || document.status
+}
+
+function isFailedDocument(document: DocumentItem) {
+  return document.status === 'failed' || document.latest_job?.status === 'failed'
+}
+
+function isProcessingDocument(document: DocumentItem) {
+  return ['uploaded', 'processing', 'queued'].includes(documentRuntimeStatus(document))
+}
+
+function isSearchableDocument(document: DocumentItem) {
+  return document.chunk_count > 0 && !isFailedDocument(document) && !isProcessingDocument(document)
+}
+
+function compareDocuments(left: DocumentItem, right: DocumentItem) {
+  if (sortMode.value === 'oldest') {
+    return new Date(left.created_at).getTime() - new Date(right.created_at).getTime()
+  }
+  if (sortMode.value === 'type') {
+    return left.kind.localeCompare(right.kind) || left.title.localeCompare(right.title)
+  }
+  if (sortMode.value === 'status') {
+    return documentRuntimeStatus(left).localeCompare(documentRuntimeStatus(right)) || left.title.localeCompare(right.title)
+  }
+  return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+}
+
 async function deleteSelectedDocuments() {
   const targets = selectedDocuments.value
   if (!targets.length) return
@@ -144,6 +192,22 @@ async function retrySelectedDocument() {
   }
 }
 
+async function retryFailedDocuments() {
+  const targets = failedDocuments.value
+  if (!targets.length) return
+  retryingFailed.value = true
+  message.value = `正在重试 ${targets.length} 份失败资料...`
+  try {
+    await Promise.all(targets.map((document) => api.retryDocument(document.id)))
+    message.value = `已重新加入 ${targets.length} 份失败资料的解析队列`
+    await loadDocuments(false)
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    retryingFailed.value = false
+  }
+}
+
 async function deleteSelectedDocument() {
   if (!selectedDocument.value) return
   const document = selectedDocument.value
@@ -170,6 +234,14 @@ async function upload(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || !store.selectedCourseId) return
+  const duplicate = documents.value.find((document) =>
+    [document.original_filename, document.title].some((name) => name.toLowerCase() === file.name.toLowerCase())
+  )
+  if (duplicate) {
+    message.value = `已存在同名资料“${file.name}”，请确认是否重复上传。`
+    input.value = ''
+    return
+  }
   message.value = '上传中...'
   try {
     const document = await api.uploadDocument(store.selectedCourseId, file)
@@ -184,7 +256,7 @@ async function upload(event: Event) {
 }
 
 function statusLabel(document: DocumentItem) {
-  const status = document.latest_job?.status || document.status
+  const status = documentRuntimeStatus(document)
   const labels: Record<string, string> = {
     uploaded: '已上传',
     queued: '排队中',
@@ -197,7 +269,7 @@ function statusLabel(document: DocumentItem) {
 }
 
 function statusClass(document: DocumentItem) {
-  const status = document.latest_job?.status || document.status
+  const status = documentRuntimeStatus(document)
   if (status === 'failed') return 'danger'
   if (status === 'succeeded' || document.status === 'ready') return 'success'
   return 'working'
@@ -229,8 +301,48 @@ function jobStatusClass(job: DocumentJob) {
       <span>{{ store.selectedCourseId ? '选择 PDF、Word、Markdown 或图片笔记' : '选择课程后即可上传资料' }}</span>
     </label>
     <p class="muted">{{ helperMessage }}</p>
+    <div v-if="documents.length" class="document-library-controls">
+      <label class="document-search-field">
+        <Search :size="16" />
+        <input
+          v-model="documentSearch"
+          data-testid="document-search"
+          type="search"
+          placeholder="搜索资料名称、类型或预览内容"
+        />
+      </label>
+      <label>
+        <Filter :size="16" />
+        <select v-model="statusFilter" data-testid="document-status-filter">
+          <option value="all">全部状态</option>
+          <option value="searchable">可检索</option>
+          <option value="processing">解析中</option>
+          <option value="failed">解析失败</option>
+        </select>
+      </label>
+      <label>
+        <span>排序</span>
+        <select v-model="sortMode" data-testid="document-sort">
+          <option value="newest">上传时间从新到旧</option>
+          <option value="oldest">上传时间从旧到新</option>
+          <option value="type">文件类型</option>
+          <option value="status">解析状态</option>
+        </select>
+      </label>
+    </div>
     <div v-if="documents.length" class="document-bulk-actions">
       <span>{{ selectedDocuments.length }} 份已选</span>
+      <button
+        class="secondary-button"
+        type="button"
+        data-testid="retry-failed-documents"
+        title="批量重试失败资料"
+        :disabled="retryingFailed || !failedDocuments.length"
+        @click="retryFailedDocuments"
+      >
+        <RotateCcw :size="16" />
+        <span>{{ retryingFailed ? '重试中' : `重试失败资料 ${failedDocuments.length}` }}</span>
+      </button>
       <button
         class="danger-button"
         type="button"
@@ -244,7 +356,7 @@ function jobStatusClass(job: DocumentJob) {
     </div>
     <ul class="document-list">
       <li
-        v-for="document in documents"
+        v-for="document in visibleDocuments"
         :key="document.id"
         class="document-row"
         :class="{ active: selectedDocument?.id === document.id }"
@@ -260,7 +372,7 @@ function jobStatusClass(job: DocumentJob) {
             @change="toggleDocumentSelection(document.id, ($event.target as HTMLInputElement).checked)"
           />
           <FileText :size="17" />
-          <strong>{{ document.title }}</strong>
+          <strong data-testid="document-title">{{ document.title }}</strong>
         </div>
         <div class="document-meta">
           <span class="status-pill" :class="statusClass(document)">{{ statusLabel(document) }}</span>
@@ -275,6 +387,9 @@ function jobStatusClass(job: DocumentJob) {
       </li>
       <li v-if="!documents.length && !loading" class="empty-row">
         {{ store.selectedCourseId ? '当前课程还没有资料，先上传一份笔记试试。' : '登录并选择课程后，这里会显示资料列表。' }}
+      </li>
+      <li v-else-if="documents.length && !visibleDocuments.length" class="empty-row">
+        没有符合条件的资料。
       </li>
     </ul>
     <aside v-if="selectedDocument" class="document-detail">

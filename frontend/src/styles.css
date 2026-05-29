@@ -348,6 +348,26 @@ input[type="checkbox"] {
   justify-content: space-between;
 }
 
+.document-library-controls {
+  align-items: center;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(180px, 1fr) minmax(120px, 160px) minmax(150px, 200px);
+}
+
+.document-library-controls label {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.document-library-controls select,
+.document-search-field input {
+  min-width: 0;
+  width: 100%;
+}
+
 .document-bulk-actions span {
   color: #697386;
   font-size: 13px;
@@ -907,6 +927,15 @@ pre {
 
   .workflow-list {
     grid-template-columns: 1fr;
+  }
+
+  .document-library-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .document-bulk-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .sidebar {

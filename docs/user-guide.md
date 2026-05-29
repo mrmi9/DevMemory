@@ -52,6 +52,14 @@ When the worker completes, the document status becomes ready and chunks become a
 
 If parsing fails, open the document detail view. DevMemory shows the worker error, a retry action, and troubleshooting guidance. Start with retry; if it fails again, check whether the source file is damaged, scanned too poorly for OCR, or better replaced with a clean PDF, Word, Markdown, or image note.
 
+For larger courses, use the document library controls to keep the material set manageable:
+
+- Search by filename, file type, or parsed preview text.
+- Filter by all documents, searchable documents, parsing documents, or failed documents.
+- Sort by newest upload, oldest upload, file type, or parsing status.
+- Retry all failed documents in one batch after fixing worker or source-file issues.
+- Watch for duplicate filename warnings before uploading another copy of the same material.
+
 ## Ask Questions
 
 Use the knowledge-base Q&A panel after documents are ready.
