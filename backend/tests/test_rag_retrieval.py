@@ -114,3 +114,25 @@ def test_hash_retrieval_filters_untrusted_low_similarity_chunks(monkeypatch):
     chunks = _retrieve_chunks(RetrievalDb(), "user-1", "什么是网络协议", "course-1", [])
 
     assert [chunk.document_id for chunk in chunks] == ["document-1"]
+
+
+def test_hash_retrieval_keeps_best_weak_positive_match(monkeypatch):
+    class WeakRelevantChunk(FakeChunk):
+        text = "SNMP Trap 使用 UDP 162 端口发送告警通知"
+
+    class UnrelatedChunk(FakeChunk):
+        id = 2
+        document_id = "document-2"
+        text = "向量数据库用于相似度检索"
+
+    rows = RetrievalRows([
+        (WeakRelevantChunk(), FakeDocument(), FakeCourse()),
+        (UnrelatedChunk(), FakeDocument(), FakeCourse()),
+    ])
+    monkeypatch.setattr(routes, "get_embedding_provider", lambda: HashEmbeddingProvider())
+    monkeypatch.setattr(routes, "_chunk_retrieval_query", lambda *args: rows)
+
+    chunks = _retrieve_chunks(RetrievalDb(), "user-1", "trap是什么", "course-1", [])
+
+    assert [chunk.chunk_id for chunk in chunks] == [1]
+    assert chunks[0].similarity > 0

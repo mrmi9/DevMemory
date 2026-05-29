@@ -55,7 +55,8 @@ from app.services.study_generation import analyze_wrong_note, generate_cards, ge
 router = APIRouter()
 login_rate_limiter = InMemoryRateLimiter()
 ai_rate_limiter = InMemoryRateLimiter()
-MIN_TRUSTED_RETRIEVAL_SIMILARITY = 0.12
+MIN_RETRIEVAL_SIMILARITY = 0.0
+RELATIVE_RETRIEVAL_KEEP_RATIO = 0.65
 
 
 @router.get("/system/status")
@@ -1118,7 +1119,13 @@ def _retrieve_chunks_in_memory(
 
 
 def _trusted_retrieved_chunks(chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
-    return [chunk for chunk in chunks if chunk.similarity >= MIN_TRUSTED_RETRIEVAL_SIMILARITY]
+    if not chunks:
+        return []
+    max_similarity = max(chunk.similarity for chunk in chunks)
+    if max_similarity <= MIN_RETRIEVAL_SIMILARITY:
+        return []
+    keep_threshold = max_similarity * RELATIVE_RETRIEVAL_KEEP_RATIO
+    return [chunk for chunk in chunks if chunk.similarity > MIN_RETRIEVAL_SIMILARITY and chunk.similarity >= keep_threshold]
 
 
 def _retrieved_chunk_from_row(chunk: DocumentChunk, document: Document, course: Course, similarity: float) -> RetrievedChunk:
