@@ -2,11 +2,12 @@
 import { ref } from 'vue'
 import { BookOpen, Plus, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
+import AppPanel from './AppPanel.vue'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
-const title = ref('计算机网络')
-const description = ref('课程资料、协议重点与错题整理')
+const title = ref('')
+const description = ref('')
 const message = ref('')
 const deletingCourseId = ref('')
 const coursePendingDelete = ref<{ id: string; title: string } | null>(null)
@@ -44,11 +45,10 @@ async function confirmDeleteCourse() {
 </script>
 
 <template>
-  <section class="panel course-panel">
-    <header class="panel-header">
+  <AppPanel title="课程" panel-class="course-panel">
+    <template #icon>
       <BookOpen :size="20" />
-      <h2>课程</h2>
-    </header>
+    </template>
     <div class="course-list">
       <div
         v-for="course in store.courses"
@@ -86,9 +86,9 @@ async function confirmDeleteCourse() {
     </article>
     <p v-if="message || store.error" class="muted">{{ message || store.error }}</p>
     <form class="stack" @submit.prevent="createCourse">
-      <input v-model="title" placeholder="课程名称" />
-      <textarea v-model="description" rows="3" placeholder="课程描述"></textarea>
-      <button type="submit" :disabled="store.busy || !!deletingCourseId">
+      <input v-model="title" placeholder="例如：计算机网络" />
+      <textarea v-model="description" rows="3" placeholder="例如：课程资料、协议重点与错题整理"></textarea>
+      <button type="submit" :disabled="store.busy || !!deletingCourseId || !title.trim()">
         <Plus :size="18" />
         <span>新建课程</span>
       </button>
@@ -105,5 +105,5 @@ async function confirmDeleteCourse() {
     >
       <p>确定删除“{{ coursePendingDelete?.title }}”吗？该课程下的资料和学习记录也会被删除。</p>
     </AppModal>
-  </section>
+  </AppPanel>
 </template>

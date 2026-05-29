@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileText, FileUp, Filter, RefreshCw, RotateCcw, Save, Search, Tag, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
+import AppPanel from './AppPanel.vue'
 import { api, type DocumentChunk, type DocumentItem, type DocumentJob } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -345,14 +346,15 @@ function jobStatusClass(job: DocumentJob) {
 </script>
 
 <template>
-  <section class="panel">
-    <header class="panel-header">
+  <AppPanel title="课程资料库">
+    <template #icon>
       <FileUp :size="20" />
-      <h2>课程资料库</h2>
+    </template>
+    <template #actions>
       <button class="icon-button" type="button" title="刷新资料状态" :disabled="!store.selectedCourseId || loading" @click="loadDocuments()">
         <RefreshCw :size="16" />
       </button>
-    </header>
+    </template>
     <label class="upload-zone" :class="{ disabled: !store.selectedCourseId }">
       <input
         type="file"
@@ -553,5 +555,5 @@ function jobStatusClass(job: DocumentJob) {
       </p>
       <p v-else>确定删除“{{ documentsPendingDelete[0]?.title }}”吗？删除后会从知识库检索中移除。</p>
     </AppModal>
-  </section>
+  </AppPanel>
 </template>

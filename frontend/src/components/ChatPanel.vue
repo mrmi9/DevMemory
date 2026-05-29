@@ -2,11 +2,12 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ClipboardList, FileText, Layers, MessageSquare, NotebookPen, Pencil, RefreshCw, Send, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
+import AppPanel from './AppPanel.vue'
 import { api, type ChatResponse, type ChatSession, type DocumentItem } from '../api'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
-const question = ref('帮我总结 SNMP 协议考试重点')
+const question = ref('')
 const result = ref<ChatResponse | null>(null)
 const busy = ref(false)
 const sessionBusy = ref('')
@@ -328,14 +329,15 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
 </script>
 
 <template>
-  <section class="panel chat-panel">
-    <header class="panel-header">
+  <AppPanel title="知识库问答" panel-class="chat-panel">
+    <template #icon>
       <MessageSquare :size="20" />
-      <h2>知识库问答</h2>
+    </template>
+    <template #actions>
       <button class="icon-button" type="button" title="刷新会话" @click="loadSessions">
         <RefreshCw :size="16" />
       </button>
-    </header>
+    </template>
     <input v-model="sessionSearch" placeholder="搜索历史会话" />
     <div class="session-list">
       <button type="button" :class="{ active: !sessionId }" @click="startNewSession">新会话</button>
@@ -380,7 +382,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
         <span>{{ document.title }}</span>
       </label>
     </div>
-    <textarea v-model="question" rows="4" placeholder="输入你的问题"></textarea>
+    <textarea v-model="question" rows="4" placeholder="例如：帮我总结 SNMP 协议考试重点"></textarea>
     <button data-testid="ask-button" @click="ask" :disabled="askDisabled">
       <Send :size="18" />
       <span>{{ busy ? '检索中' : '提问' }}</span>
@@ -501,5 +503,5 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
     >
       <p>确定删除“{{ sessionPendingDelete?.title }}”吗？该会话历史也会被删除。</p>
     </AppModal>
-  </section>
+  </AppPanel>
 </template>

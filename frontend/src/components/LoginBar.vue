@@ -6,8 +6,8 @@ import { useStudyStore } from '../stores/study'
 import AppModal from './AppModal.vue'
 
 const store = useStudyStore()
-const username = ref('admin')
-const password = ref('changeme')
+const username = ref('')
+const password = ref('')
 const message = ref('')
 const isLoggedIn = ref(api.hasToken())
 const systemStatus = ref<SystemStatus | null>(null)
@@ -73,6 +73,7 @@ function retrySystemStatus() {
 }
 
 async function login() {
+  if (!username.value.trim() || !password.value) return
   message.value = ''
   try {
     await store.login(username.value, password.value)
@@ -130,9 +131,9 @@ async function saveAiConfig() {
 
 <template>
   <form class="login-bar" @submit.prevent="login">
-    <input v-model="username" aria-label="用户名" placeholder="用户名" :disabled="isLoggedIn" />
+    <input v-model="username" aria-label="用户名" placeholder="用户名（例如：admin）" :disabled="isLoggedIn" />
     <input v-model="password" aria-label="密码" placeholder="密码" type="password" :disabled="isLoggedIn" />
-    <button v-if="!isLoggedIn" type="submit" title="登录">
+    <button v-if="!isLoggedIn" type="submit" title="登录" :disabled="!username.trim() || !password">
       <LogIn :size="18" />
       <span>登录</span>
     </button>

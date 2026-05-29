@@ -41,6 +41,34 @@ describe('StudyToolsPanel', () => {
     vi.mocked(api.deleteWrongNote).mockReset()
   })
 
+  it('keeps the study topic as placeholder guidance and disables generation until users type', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useStudyStore()
+    store.selectedCourseId = 'course-1'
+    vi.mocked(api.listStudyCards).mockResolvedValue([])
+    vi.mocked(api.listGeneratedQuestions).mockResolvedValue([])
+    vi.mocked(api.listWrongNotes).mockResolvedValue([])
+
+    const wrapper = mount(StudyToolsPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    const topicInput = wrapper.find('input')
+    expect((topicInput.element as HTMLInputElement).value).toBe('')
+    expect(topicInput.attributes('placeholder')).toBe('例如：SNMP 协议')
+    expect((wrapper.find('[data-testid="generate-cards-button"]').element as HTMLButtonElement).disabled).toBe(true)
+    expect((wrapper.find('[data-testid="generate-questions-button"]').element as HTMLButtonElement).disabled).toBe(true)
+
+    await topicInput.setValue('SNMP 协议')
+
+    expect((wrapper.find('[data-testid="generate-cards-button"]').element as HTMLButtonElement).disabled).toBe(false)
+    expect((wrapper.find('[data-testid="generate-questions-button"]').element as HTMLButtonElement).disabled).toBe(false)
+  })
+
   it('notifies progress listeners after card mastery changes', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)

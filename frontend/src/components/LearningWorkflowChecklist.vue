@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { CheckCircle2, Circle, RefreshCw } from 'lucide-vue-next'
+import AppPanel from './AppPanel.vue'
 import { api, type ChatSession, type DocumentItem, type GeneratedQuestion, type StudyCard } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -106,14 +107,15 @@ async function loadWorkflowState() {
 </script>
 
 <template>
-  <section class="panel workflow-panel">
-    <header class="panel-header">
+  <AppPanel title="学习闭环" panel-class="workflow-panel">
+    <template #icon>
       <CheckCircle2 :size="20" />
-      <h2>学习闭环</h2>
+    </template>
+    <template #actions>
       <button class="icon-button" type="button" title="刷新学习闭环" :disabled="loading" @click="loadWorkflowState">
         <RefreshCw :size="16" />
       </button>
-    </header>
+    </template>
     <ol class="workflow-list">
       <li v-for="step in steps" :key="step.title" class="workflow-step" :class="step.status">
         <CheckCircle2 v-if="step.status === 'done'" :size="18" />
@@ -125,5 +127,5 @@ async function loadWorkflowState() {
       </li>
     </ol>
     <p v-if="error" class="inline-error">{{ error }}</p>
-  </section>
+  </AppPanel>
 </template>

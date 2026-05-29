@@ -26,6 +26,27 @@ describe('CoursePanel', () => {
     expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 
+  it('uses placeholders instead of prefilled course examples', () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+
+    const wrapper = mount(CoursePanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+
+    const titleInput = wrapper.find('input')
+    const descriptionInput = wrapper.find('textarea')
+    const submitButton = wrapper.find('button[type="submit"]')
+
+    expect((titleInput.element as HTMLInputElement).value).toBe('')
+    expect(titleInput.attributes('placeholder')).toBe('例如：计算机网络')
+    expect((descriptionInput.element as HTMLTextAreaElement).value).toBe('')
+    expect(descriptionInput.attributes('placeholder')).toBe('例如：课程资料、协议重点与错题整理')
+    expect((submitButton.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('confirms course deletion in an app modal without window.confirm', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)

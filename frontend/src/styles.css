@@ -157,6 +157,37 @@ input[type="checkbox"] {
   margin: 0;
 }
 
+.collapsible-panel.collapsed {
+  gap: 0;
+}
+
+.collapsible-panel-header {
+  min-height: 32px;
+}
+
+.panel-toggle-button {
+  flex: 0 0 auto;
+  margin-left: 0;
+}
+
+.panel-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.panel-header-actions .icon-button {
+  margin-left: 0;
+}
+
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
 .login-bar,
 .inline-form,
 .button-row {

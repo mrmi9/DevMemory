@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { Activity } from 'lucide-vue-next'
+import AppPanel from './AppPanel.vue'
 import { api, type ProgressOverview, type ReviewCard } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -51,11 +52,10 @@ watch(() => store.progressRefreshKey, loadOverview)
 </script>
 
 <template>
-  <section class="panel progress-panel">
-    <header class="panel-header">
+  <AppPanel title="学习进度" panel-class="progress-panel">
+    <template #icon>
       <Activity :size="20" />
-      <h2>学习进度</h2>
-    </header>
+    </template>
     <div class="metrics">
       <span><strong>{{ overview.courses }}</strong><small>课程</small></span>
       <span><strong>{{ overview.records }}</strong><small>记录</small></span>
@@ -96,5 +96,5 @@ watch(() => store.progressRefreshKey, loadOverview)
         </article>
       </section>
     </section>
-  </section>
+  </AppPanel>
 </template>

@@ -58,6 +58,34 @@ describe('LoginBar', () => {
     expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 
+  it('uses login placeholders instead of prefilled credentials', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    vi.mocked(api.systemStatus).mockResolvedValue({
+      status: 'ok',
+      environment: 'production',
+      ai_mode: 'offline_placeholder',
+      checks: {
+        deepseek: { configured: false }
+      }
+    })
+
+    const wrapper = mount(LoginBar, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    const usernameInput = wrapper.find('input[aria-label="用户名"]')
+    const passwordInput = wrapper.find('input[aria-label="密码"]')
+
+    expect((usernameInput.element as HTMLInputElement).value).toBe('')
+    expect(usernameInput.attributes('placeholder')).toBe('用户名（例如：admin）')
+    expect((passwordInput.element as HTMLInputElement).value).toBe('')
+    expect((wrapper.find('button[type="submit"]').element as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('lets signed-in users log out and clears local study state', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)

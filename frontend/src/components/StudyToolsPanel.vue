@@ -2,11 +2,12 @@
 import { onMounted, ref, watch } from 'vue'
 import { Brain, ClipboardList, Layers, NotebookPen, Pencil, RefreshCw, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
+import AppPanel from './AppPanel.vue'
 import { api, type GeneratedQuestion, type StudyCard, type WrongNote } from '../api'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
-const topic = ref('SNMP 协议')
+const topic = ref('')
 const output = ref('')
 const wrongQuestion = ref('')
 const wrongAnswer = ref('')
@@ -35,12 +36,14 @@ onMounted(loadStudyAssets)
 watch(() => store.selectedCourseId, loadStudyAssets)
 
 async function generate(kind: 'cards' | 'questions') {
+  const currentTopic = topic.value.trim()
+  if (!currentTopic) return
   busy.value = kind
   output.value = ''
   error.value = ''
   try {
     const path = kind === 'cards' ? '/study/cards' : '/study/questions'
-    output.value = (await api.generate(path, topic.value, store.selectedCourseId)).content
+    output.value = (await api.generate(path, currentTopic, store.selectedCourseId)).content
     if (kind === 'cards') {
       await loadStudyCards()
     } else {
@@ -291,22 +294,23 @@ async function confirmDeleteWrongNote(noteId: string) {
 </script>
 
 <template>
-  <section class="panel">
-    <header class="panel-header">
+  <AppPanel title="学习材料">
+    <template #icon>
       <Brain :size="20" />
-      <h2>学习材料</h2>
+    </template>
+    <template #actions>
       <button class="icon-button" type="button" title="刷新学习材料" @click="loadStudyAssets">
         <RefreshCw :size="16" />
       </button>
-    </header>
+    </template>
 
-    <input v-model="topic" placeholder="主题，例如 SNMP 协议" />
+    <input v-model="topic" placeholder="例如：SNMP 协议" />
     <div class="button-row">
-      <button @click="generate('cards')" :disabled="!!busy">
+      <button data-testid="generate-cards-button" @click="generate('cards')" :disabled="!!busy || !topic.trim()">
         <Layers :size="18" />
         <span>复习卡片</span>
       </button>
-      <button @click="generate('questions')" :disabled="!!busy">
+      <button data-testid="generate-questions-button" @click="generate('questions')" :disabled="!!busy || !topic.trim()">
         <ClipboardList :size="18" />
         <span>考试题</span>
       </button>
@@ -470,5 +474,5 @@ async function confirmDeleteWrongNote(noteId: string) {
     >
       <p>确定删除“{{ deleteTarget?.title }}”吗？该操作无法撤销。</p>
     </AppModal>
-  </section>
+  </AppPanel>
 </template>

@@ -102,6 +102,7 @@ describe('ChatPanel', () => {
     })
     await flushPromises()
 
+    await wrapper.find('textarea').setValue('帮我总结 SNMP 协议考试重点')
     await wrapper.find('[data-testid="ask-button"]').trigger('click')
     await flushPromises()
     await wrapper.find('[data-testid="citation-link"]').trigger('click')
@@ -217,11 +218,50 @@ describe('ChatPanel', () => {
     })
     await flushPromises()
 
+    await wrapper.find('textarea').setValue('帮我总结 SNMP 协议考试重点')
     await wrapper.find('[data-testid="chat-document-filter"]').setValue(true)
     await wrapper.find('[data-testid="ask-button"]').trigger('click')
     await flushPromises()
 
     expect(api.ask).toHaveBeenCalledWith('帮我总结 SNMP 协议考试重点', 'course-1', '', ['document-1'])
+  })
+
+  it('uses placeholder guidance instead of pre-filling the question input', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useStudyStore().selectedCourseId = 'course-1'
+    vi.mocked(api.listChatSessions).mockResolvedValue([])
+    vi.mocked(api.listDocuments).mockResolvedValue([
+      {
+        id: 'document-1',
+        course_id: 'course-1',
+        title: 'network.pdf',
+        original_filename: 'network.pdf',
+        kind: 'pdf',
+        status: 'ready',
+        error_message: '',
+        text_preview: '',
+        created_at: '2026-05-29T14:00:00',
+        updated_at: '2026-05-29T14:01:00',
+        chunk_count: 4,
+        latest_job: null
+      }
+    ])
+
+    const wrapper = mount(ChatPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    const textarea = wrapper.find('textarea').element as HTMLTextAreaElement
+    expect(textarea.value).toBe('')
+    expect(textarea.placeholder).toContain('例如：帮我总结 SNMP 协议考试重点')
+
+    await wrapper.find('[data-testid="ask-button"]').trigger('click')
+
+    expect(api.ask).not.toHaveBeenCalled()
   })
 
   it('explains the next step when a course has no searchable documents', async () => {
@@ -429,6 +469,7 @@ describe('ChatPanel', () => {
     })
     await flushPromises()
 
+    await wrapper.find('textarea').setValue('资料不足时如何处理？')
     await wrapper.find('[data-testid="ask-button"]').trigger('click')
     await flushPromises()
 

@@ -2,11 +2,12 @@
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { Network, RefreshCw, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
+import AppPanel from './AppPanel.vue'
 import { api, type Mindmap } from '../api'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
-const topic = ref('计算机网络考试重点')
+const topic = ref('')
 const markdown = ref('# 计算机网络考试重点\n- 上传资料后可生成导图')
 const mindmaps = ref<Mindmap[]>([])
 const selectedMindmapId = ref('')
@@ -128,16 +129,17 @@ watch(() => store.selectedCourseId, loadMindmaps)
 </script>
 
 <template>
-  <section class="panel mindmap-panel">
-    <header class="panel-header">
+  <AppPanel title="思维导图" panel-class="mindmap-panel">
+    <template #icon>
       <Network :size="20" />
-      <h2>思维导图</h2>
+    </template>
+    <template #actions>
       <button class="icon-button" type="button" title="刷新思维导图" :disabled="!!busy" @click="loadMindmaps">
         <RefreshCw :size="16" />
       </button>
-    </header>
+    </template>
     <div class="inline-form">
-      <input v-model="topic" placeholder="导图主题" />
+      <input v-model="topic" placeholder="例如：计算机网络考试重点" />
       <button @click="generate" :disabled="!!busy || !store.selectedCourseId || !topic.trim()">
         <Network :size="18" />
         <span>{{ busy === 'generate' ? '生成中' : '生成' }}</span>
@@ -186,5 +188,5 @@ watch(() => store.selectedCourseId, loadMindmaps)
     >
       <p>确定删除“{{ mindmapPendingDelete?.title }}”吗？该操作无法撤销。</p>
     </AppModal>
-  </section>
+  </AppPanel>
 </template>
