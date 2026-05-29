@@ -95,6 +95,25 @@ python scripts\release_rehearsal.py
 
 The generated report is written under `release-evidence/` and must show all automated gates passing before a release tag is created. Use `--allow-dirty` only while developing an iteration, never for final release evidence.
 
+## Release Notes and Tagging
+
+- Review [release-notes/v1.0.0.md](release-notes/v1.0.0.md).
+- Review [release-tagging.md](release-tagging.md).
+- Confirm release notes include deployment notes, verification evidence, known risks, and deferred v1.1 items.
+- Confirm the release rehearsal report has been archived outside Git.
+- Confirm clean-environment restore evidence has been recorded.
+
+```powershell
+python scripts\release_tag_check.py --version v1.0.0
+```
+
+Only after the readiness check passes on a clean, pushed `main` commit:
+
+```powershell
+git tag -a v1.0.0 -m "DevMemory v1.0.0"
+git push origin v1.0.0
+```
+
 ## Health and Readiness
 
 ```powershell
@@ -135,5 +154,5 @@ The smoke test must complete login, temporary course creation, Markdown upload, 
 
 ## GitHub
 
-- GitHub Actions `backend`, `frontend`, and `docker` jobs pass.
+- GitHub Actions `backend`, `frontend`, `release-tools`, and `docker` jobs pass.
 - `main` is clean after release verification.

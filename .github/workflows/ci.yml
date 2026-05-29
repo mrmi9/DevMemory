@@ -41,6 +41,18 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+  release-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install release tool dependencies
+        run: python -m pip install pytest
+      - name: Run release tool tests
+        run: python -m pytest scripts
+
   docker:
     runs-on: ubuntu-latest
     steps:

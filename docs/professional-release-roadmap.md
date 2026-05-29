@@ -32,13 +32,13 @@ Out of scope for v1.0:
 | Track | Goal | Current State | Next Direction |
 | --- | --- | --- | --- |
 | Deployment | Make private deployment repeatable | Production compose, ops scripts, and release rehearsal command exist | Rehearse clean-environment restore |
-| Quality | Prevent regressions before release | Backend, frontend, Docker CI, smoke, and rehearsal gates exist | Add release notes and tagging checks |
+| Quality | Prevent regressions before release | Backend, frontend, Docker CI, smoke, rehearsal, and tag readiness gates exist | Keep release notes current for each tag |
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and rehearsal report prompts exist | Rehearse restore on a clean machine |
 | UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and dismissible tips |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
-| Documentation | Keep release knowledge current | Deployment, user, backup, checklist docs exist | Maintain iteration records and release notes |
+| Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, and release notes docs exist | Maintain iteration records and release notes |
 
 ## Planned Iterations
 
@@ -136,11 +136,25 @@ Delivered scope:
 
 Goal: prepare the project for an auditable v1.0 release tag.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-008 Release Notes and Tagging Preparation](iterations/2026-05-29-i008-release-notes-tagging.md)
+
+Delivered scope:
 
 - Add release notes template and v1.0 draft notes.
 - Add tag readiness checks.
 - Document remaining release risks and deferred v1.1 items.
+
+### I-009 Clean Restore Drill Evidence
+
+Goal: prove that a release backup can be restored in a clean environment before the v1.0 tag is created.
+
+Default scope:
+
+- Run the database and upload restore drill on a clean machine or clean Docker context.
+- Archive the release rehearsal and restore evidence outside Git.
+- Update the v1.0 release notes with final evidence.
 
 ## Release Gate
 

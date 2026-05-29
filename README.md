@@ -139,6 +139,12 @@ powershell -ExecutionPolicy Bypass -File scripts\release-rehearsal.ps1
 
 The rehearsal report is generated under `release-evidence/`.
 
+Release tag readiness:
+
+```powershell
+python scripts\release_tag_check.py --version v1.0.0
+```
+
 ## Security
 
 Private deployment security controls and rotation steps are documented in [docs/security-hardening.md](docs/security-hardening.md).
@@ -155,6 +161,8 @@ DevMemory is iterated toward a professional private-deployment release through e
 - Iteration template: [docs/iteration-template.md](docs/iteration-template.md)
 - Iteration records: [docs/iterations](docs/iterations)
 - Release rehearsal: [docs/release-candidate-rehearsal.md](docs/release-candidate-rehearsal.md)
+- Release tagging: [docs/release-tagging.md](docs/release-tagging.md)
+- Release notes: [docs/release-notes/v1.0.0.md](docs/release-notes/v1.0.0.md)
 
 ## Backup and Restore
 
@@ -173,6 +181,7 @@ End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
 - `infra/postgres/init.sql`: enables the pgvector extension.
 - `scripts/smoke_test.py`: API-based end-to-end smoke test.
 - `scripts/release_rehearsal.py`: release-candidate gate runner and evidence report generator.
+- `scripts/release_tag_check.py`: release notes and tag readiness checker.
 
 ## Notes
 
