@@ -129,6 +129,11 @@ def main():
         assert_true(chat.get("answer"), "chat did not return an answer")
         assert_true(chat.get("session_id"), "chat did not return a session id")
         assert_true(len(chat.get("citations", [])) > 0, "chat did not return citations")
+        assert_true(
+            chat.get("retrieval_confidence") in {"high", "medium", "weak", "none"},
+            f"chat returned invalid retrieval confidence: {chat.get('retrieval_confidence')}",
+        )
+        assert_true(isinstance(chat.get("quality_notes"), list), "chat did not return quality notes")
 
         cards = request_json(
             args.base_url,

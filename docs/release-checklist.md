@@ -38,6 +38,14 @@ Use this checklist before tagging or distributing a private deployment release.
 - Failed document parsing shows the failure reason, retry action, and troubleshooting guidance.
 - Answers without citations tell the user to upload or choose more relevant materials.
 
+## AI Quality
+
+- Review [ai-quality.md](ai-quality.md).
+- Run `..\.venv\Scripts\python.exe -m pytest tests\test_ai_quality.py tests\test_rag_prompt.py tests\test_rag_retrieval.py`.
+- Confirm representative answers show `retrieval_confidence` and quality notes.
+- Confirm weak or missing context asks users to upload or choose more relevant materials.
+- Manually compare at least three answers against their cited document previews before release.
+
 ## Build and Tests
 
 ```powershell

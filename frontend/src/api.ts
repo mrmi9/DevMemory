@@ -56,6 +56,8 @@ export interface ChatResponse {
     similarity: number
   }>
   session_id: string
+  retrieval_confidence?: string
+  quality_notes?: string[]
 }
 
 export interface ChatSession {

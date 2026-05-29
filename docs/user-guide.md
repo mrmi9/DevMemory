@@ -54,6 +54,12 @@ Answers include source citations when relevant chunks are found.
 
 If an answer has no citations, treat it as a signal that the selected materials are insufficient. Upload more relevant notes or narrow the document filter before asking again.
 
+Assistant answers also show retrieval confidence:
+
+- `high`: the answer has multiple relevant chunks.
+- `medium`: context exists but should be checked against the citations.
+- `weak` or `none`: upload or choose more relevant materials before trusting the answer.
+
 ## Generate Learning Materials
 
 Use the study materials panel to generate:

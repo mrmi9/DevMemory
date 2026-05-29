@@ -12,7 +12,13 @@ const sessionBusy = ref('')
 const error = ref('')
 const sessionId = ref('')
 const sessionSearch = ref('')
-const messages = ref<Array<{ role: 'user' | 'assistant'; content: string; citations?: ChatResponse['citations'] }>>([])
+const messages = ref<Array<{
+  role: 'user' | 'assistant'
+  content: string
+  citations?: ChatResponse['citations']
+  retrieval_confidence?: string
+  quality_notes?: string[]
+}>>([])
 const sessions = ref<ChatSession[]>([])
 const documents = ref<DocumentItem[]>([])
 const selectedDocumentIds = ref<Set<string>>(new Set())
@@ -155,7 +161,13 @@ async function ask() {
     messages.value.push({ role: 'user', content: currentQuestion })
     result.value = await api.ask(currentQuestion, store.selectedCourseId, sessionId.value, selectedAskDocumentIds.value)
     sessionId.value = result.value.session_id
-    messages.value.push({ role: 'assistant', content: result.value.answer, citations: result.value.citations })
+    messages.value.push({
+      role: 'assistant',
+      content: result.value.answer,
+      citations: result.value.citations,
+      retrieval_confidence: result.value.retrieval_confidence,
+      quality_notes: result.value.quality_notes
+    })
     await loadSessions()
   } catch (caught) {
     error.value = caught instanceof Error ? caught.message : String(caught)
@@ -239,6 +251,10 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
       <article v-for="(message, index) in messages" :key="index" class="chat-message" :class="message.role">
         <strong>{{ message.role === 'user' ? '我' : 'AI 助手' }}</strong>
         <pre>{{ message.content }}</pre>
+        <div v-if="message.role === 'assistant' && message.retrieval_confidence" class="quality-strip">
+          <span>检索置信度：{{ message.retrieval_confidence }}</span>
+          <small v-for="note in message.quality_notes" :key="note">{{ note }}</small>
+        </div>
         <div v-if="message.role === 'assistant'" class="citation-strip">
           <button
             v-for="citation in message.citations"

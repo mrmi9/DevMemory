@@ -12,6 +12,33 @@ class RetrievedChunk:
     document_id: str = ""
 
 
+@dataclass(frozen=True)
+class RetrievalQuality:
+    confidence: str
+    notes: list[str]
+
+
+def evaluate_retrieval_quality(chunks: list[RetrievedChunk]) -> RetrievalQuality:
+    if not chunks:
+        return RetrievalQuality(confidence="none", notes=["没有检索到可用资料，回答应明确提示资料不足。"])
+
+    max_similarity = max(chunk.similarity for chunk in chunks)
+    notes: list[str] = []
+    if max_similarity < 0.25:
+        notes.append(f"最高相似度较低（{max_similarity:.2f}），回答只能作为弱参考。")
+        confidence = "weak"
+    elif max_similarity < 0.6:
+        notes.append(f"最高相似度中等（{max_similarity:.2f}），需要核对引用内容。")
+        confidence = "medium"
+    elif len(chunks) < 2:
+        notes.append("引用资料较少，建议补充更多相关资料后再确认结论。")
+        confidence = "medium"
+    else:
+        notes.append("引用资料较充分，可以结合引用片段复核答案。")
+        confidence = "high"
+    return RetrievalQuality(confidence=confidence, notes=notes)
+
+
 def build_rag_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
     context_blocks = []
     for index, chunk in enumerate(chunks, start=1):

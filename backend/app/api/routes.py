@@ -42,7 +42,7 @@ from app.services.document_library import serialize_chunk_row, serialize_documen
 from app.services.embeddings import cosine_similarity, get_embedding_provider, vector_values
 from app.services.llm import DeepSeekClient
 from app.rate_limit import InMemoryRateLimiter
-from app.services.rag import RetrievedChunk, build_rag_prompt
+from app.services.rag import RetrievedChunk, build_rag_prompt, evaluate_retrieval_quality
 from app.services.study_library import build_wrong_note_from_question, parse_generated_cards, parse_generated_questions, serialize_generated_question_row, serialize_study_card_row, serialize_wrong_note_row
 from app.services.study_generation import analyze_wrong_note, generate_cards, generate_mindmap, generate_questions
 
@@ -265,6 +265,7 @@ def list_document_jobs(document_id: str, user: User = Depends(get_current_user),
 async def chat(payload: ChatRequest, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     _enforce_ai_rate_limit(request, user)
     chunks = _retrieve_chunks(db, user.id, payload.question, payload.course_id, payload.document_ids)
+    retrieval_quality = evaluate_retrieval_quality(chunks)
     prompt = build_rag_prompt(payload.question, chunks)
     answer = await DeepSeekClient().complete(prompt)
     session = _get_or_create_chat_session(db, user.id, payload)
@@ -288,6 +289,8 @@ async def chat(payload: ChatRequest, request: Request, user: User = Depends(get_
         answer=answer,
         citations=citations,
         session_id=session.id,
+        retrieval_confidence=retrieval_quality.confidence,
+        quality_notes=retrieval_quality.notes,
     )
 
 

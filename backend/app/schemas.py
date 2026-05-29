@@ -101,6 +101,8 @@ class ChatResponse(BaseModel):
     answer: str
     citations: list[Citation]
     session_id: str
+    retrieval_confidence: str = "unknown"
+    quality_notes: list[str] = Field(default_factory=list)
 
 
 class ChatSessionOut(BaseModel):

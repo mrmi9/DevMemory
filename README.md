@@ -12,6 +12,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 - Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
 - Progress tracking for study cards and course review.
 - DeepSeek integration with offline placeholder mode when no API key is configured.
+- Retrieval confidence and quality notes for AI answers.
 - Private deployment health/readiness status at `/api/system/status`.
 - Private deployment hardening: configurable token lifetime, upload size limits, login/AI rate limits, and logout.
 
@@ -133,6 +134,10 @@ Release checks are listed in [docs/release-checklist.md](docs/release-checklist.
 ## Security
 
 Private deployment security controls and rotation steps are documented in [docs/security-hardening.md](docs/security-hardening.md).
+
+## AI Quality
+
+Retrieval confidence, fixture checks, and release validation guidance are documented in [docs/ai-quality.md](docs/ai-quality.md).
 
 ## Professional Release Iterations
 

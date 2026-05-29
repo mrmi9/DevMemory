@@ -38,6 +38,8 @@ describe('ChatPanel', () => {
     vi.mocked(api.ask).mockResolvedValue({
       answer: 'SNMP trap is event driven.',
       session_id: 'session-1',
+      retrieval_confidence: 'high',
+      quality_notes: ['引用资料较充分'],
       citations: [
         {
           chunk_id: 7,
@@ -95,6 +97,8 @@ describe('ChatPanel', () => {
 
     expect(api.getDocument).toHaveBeenCalledWith('document-1')
     expect(wrapper.text()).toContain('Full parsed preview for SNMP trap.')
+    expect(wrapper.text()).toContain('检索置信度：high')
+    expect(wrapper.text()).toContain('引用资料较充分')
   })
 
   it('searches, renames, and deletes chat sessions', async () => {

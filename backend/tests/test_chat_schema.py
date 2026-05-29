@@ -4,10 +4,18 @@ from app.schemas import ChatRequest, ChatResponse, Citation
 
 def test_chat_schema_supports_session_continuation():
     request = ChatRequest(question="summarize SNMP", course_id="course-1", session_id="session-1")
-    response = ChatResponse(answer="answer", citations=[], session_id="session-1")
+    response = ChatResponse(
+        answer="answer",
+        citations=[],
+        session_id="session-1",
+        retrieval_confidence="none",
+        quality_notes=["没有检索到可用资料"],
+    )
 
     assert request.session_id == "session-1"
     assert response.session_id == "session-1"
+    assert response.retrieval_confidence == "none"
+    assert response.quality_notes == ["没有检索到可用资料"]
 
 
 def test_citation_exposes_document_link_and_text_preview():

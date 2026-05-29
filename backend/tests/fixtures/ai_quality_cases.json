@@ -1,0 +1,49 @@
+[
+  {
+    "name": "no_context",
+    "chunks": [],
+    "expected_confidence": "none",
+    "expected_note": "没有检索到可用资料"
+  },
+  {
+    "name": "weak_single_context",
+    "chunks": [
+      {
+        "chunk_id": 1,
+        "document_title": "network.pdf",
+        "course_title": "Computer Networks",
+        "text": "This paragraph mentions monitoring tools but not the requested protocol.",
+        "page_number": 2,
+        "similarity": 0.18,
+        "document_id": "document-1"
+      }
+    ],
+    "expected_confidence": "weak",
+    "expected_note": "最高相似度较低"
+  },
+  {
+    "name": "grounded_context",
+    "chunks": [
+      {
+        "chunk_id": 1,
+        "document_title": "network.pdf",
+        "course_title": "Computer Networks",
+        "text": "SNMP Trap is a device-initiated notification sent to the manager.",
+        "page_number": 8,
+        "similarity": 0.88,
+        "document_id": "document-1"
+      },
+      {
+        "chunk_id": 2,
+        "document_title": "network.pdf",
+        "course_title": "Computer Networks",
+        "text": "SNMP managers receive Trap messages on UDP port 162.",
+        "page_number": 9,
+        "similarity": 0.74,
+        "document_id": "document-1"
+      }
+    ],
+    "expected_confidence": "high",
+    "expected_note": "引用资料较充分"
+  }
+]

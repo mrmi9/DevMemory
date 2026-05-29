@@ -37,7 +37,7 @@ Out of scope for v1.0:
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and docs exist | Rehearse restore on a clean machine |
 | UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and dismissible tips |
-| AI Quality | Improve answer reliability | RAG citations and model config exist | Add prompt/version evaluation cases |
+| AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist docs exist | Maintain iteration records and release notes |
 
 ## Planned Iterations
@@ -107,11 +107,25 @@ Delivered scope:
 
 Goal: make answer quality easier to evaluate before a private release.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-006 AI Quality and Retrieval Confidence](iterations/2026-05-29-i006-ai-quality-retrieval-confidence.md)
+
+Delivered scope:
 
 - Add prompt and citation evaluation fixtures.
 - Add deterministic retrieval tests for weak/no context cases.
 - Document how operators should validate DeepSeek output before release.
+
+### I-007 Release Candidate Rehearsal
+
+Goal: prove the private deployment can be installed, upgraded, backed up, restored, and smoke-tested from a clean environment.
+
+Default scope:
+
+- Rehearse production compose setup with `.env.production`.
+- Run backup and restore scripts against a clean volume.
+- Document release candidate evidence and remaining risks.
 
 ## Release Gate
 
