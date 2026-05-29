@@ -74,12 +74,15 @@ class FakeCourse:
 
 
 class RetrievalRows:
+    def __init__(self, rows=None):
+        self.rows = rows
+
     def limit(self, value):
         self.limit_value = value
         return self
 
     def all(self):
-        return [(FakeChunk(), FakeDocument(), FakeCourse())]
+        return self.rows if self.rows is not None else [(FakeChunk(), FakeDocument(), FakeCourse())]
 
 
 def test_hash_retrieval_recomputes_similarity_from_chunk_text(monkeypatch):
@@ -89,3 +92,25 @@ def test_hash_retrieval_recomputes_similarity_from_chunk_text(monkeypatch):
     chunks = _retrieve_chunks(RetrievalDb(), "user-1", "什么是网络协议", "course-1", [])
 
     assert chunks[0].similarity > 0.1
+
+
+def test_hash_retrieval_filters_untrusted_low_similarity_chunks(monkeypatch):
+    class UntrustedChunk(FakeChunk):
+        id = 2
+        document_id = "document-2"
+        text = "烹饪配方需要控制火候"
+
+    class DuplicateTitleDocument(FakeDocument):
+        id = "document-2"
+        title = "network.md"
+
+    rows = RetrievalRows([
+        (FakeChunk(), FakeDocument(), FakeCourse()),
+        (UntrustedChunk(), DuplicateTitleDocument(), FakeCourse()),
+    ])
+    monkeypatch.setattr(routes, "get_embedding_provider", lambda: HashEmbeddingProvider())
+    monkeypatch.setattr(routes, "_chunk_retrieval_query", lambda *args: rows)
+
+    chunks = _retrieve_chunks(RetrievalDb(), "user-1", "什么是网络协议", "course-1", [])
+
+    assert [chunk.document_id for chunk in chunks] == ["document-1"]

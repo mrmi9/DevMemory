@@ -403,7 +403,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
             data-testid="citation-link"
             @click="openCitation(citation)"
           >
-            <span>{{ citation.document_title }} · 相似度 {{ citation.similarity.toFixed(2) }}</span>
+            <span>{{ citation.course_title }} · {{ citation.document_title }} · 相似度 {{ citation.similarity.toFixed(2) }}</span>
             <small>{{ citation.text_preview }}</small>
           </button>
           <span v-if="!message.citations?.length" class="neutral">资料不足，建议上传或选择更相关的资料</span>

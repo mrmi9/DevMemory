@@ -55,6 +55,7 @@ from app.services.study_generation import analyze_wrong_note, generate_cards, ge
 router = APIRouter()
 login_rate_limiter = InMemoryRateLimiter()
 ai_rate_limiter = InMemoryRateLimiter()
+MIN_TRUSTED_RETRIEVAL_SIMILARITY = 0.12
 
 
 @router.get("/system/status")
@@ -1078,10 +1079,10 @@ def _retrieve_chunks(db: Session, user_id: str, question: str, course_id: str | 
     try:
         distance = DocumentChunk.embedding.cosine_distance(question_vector).label("distance")
         rows = query.add_columns(distance).order_by(distance.asc()).limit(6).all()
-        return [
+        return _trusted_retrieved_chunks([
             _retrieved_chunk_from_row(chunk, document, course, 1 - float(distance_value or 0))
             for chunk, document, course, distance_value in rows
-        ]
+        ])
     except Exception:
         return _retrieve_chunks_in_memory(db, user_id, course_id, document_ids, question_vector)
 
@@ -1110,7 +1111,14 @@ def _retrieve_chunks_in_memory(
         chunk_vector = provider.embed([chunk.text])[0] if isinstance(provider, HashEmbeddingProvider) else vector_values(chunk.embedding)
         scored.append((cosine_similarity(question_vector, chunk_vector), chunk, document, course))
     scored.sort(key=lambda item: item[0], reverse=True)
-    return [_retrieved_chunk_from_row(chunk, document, course, score) for score, chunk, document, course in scored[:6]]
+    return _trusted_retrieved_chunks([
+        _retrieved_chunk_from_row(chunk, document, course, score)
+        for score, chunk, document, course in scored[:6]
+    ])
+
+
+def _trusted_retrieved_chunks(chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
+    return [chunk for chunk in chunks if chunk.similarity >= MIN_TRUSTED_RETRIEVAL_SIMILARITY]
 
 
 def _retrieved_chunk_from_row(chunk: DocumentChunk, document: Document, course: Course, similarity: float) -> RetrievedChunk:

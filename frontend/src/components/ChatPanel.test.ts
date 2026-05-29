@@ -109,6 +109,7 @@ describe('ChatPanel', () => {
 
     expect(api.getDocument).toHaveBeenCalledWith('document-1')
     expect(wrapper.text()).toContain('Full parsed preview for SNMP trap.')
+    expect(wrapper.text()).toContain('Computer Networks · network.pdf')
     expect(wrapper.text()).toContain('检索置信度：high')
     expect(wrapper.text()).toContain('引用资料较充分')
     expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
