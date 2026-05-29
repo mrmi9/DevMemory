@@ -83,6 +83,16 @@ python scripts/smoke_test.py --base-url http://127.0.0.1:5173/api --username <us
 
 The private deployment compose file does not publish the backend port. Smoke testing a production stack should use the frontend nginx `/api` proxy at `http://127.0.0.1:5173/api`.
 
+## Release Candidate Rehearsal
+
+Before tagging or distributing a release candidate, run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release-rehearsal.ps1
+```
+
+The rehearsal writes a Markdown report under `release-evidence/`. See [release-candidate-rehearsal.md](release-candidate-rehearsal.md) for the full process and restore drill.
+
 ## Roll Back a Failed Upgrade
 
 Recommended scripted rollback:

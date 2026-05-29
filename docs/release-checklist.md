@@ -81,6 +81,20 @@ Expected services:
 - `worker` up.
 - `postgres` healthy.
 
+## Release Rehearsal
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release-rehearsal.ps1
+```
+
+or:
+
+```powershell
+python scripts\release_rehearsal.py
+```
+
+The generated report is written under `release-evidence/` and must show all automated gates passing before a release tag is created. Use `--allow-dirty` only while developing an iteration, never for final release evidence.
+
 ## Health and Readiness
 
 ```powershell

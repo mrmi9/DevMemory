@@ -31,11 +31,11 @@ Out of scope for v1.0:
 
 | Track | Goal | Current State | Next Direction |
 | --- | --- | --- | --- |
-| Deployment | Make private deployment repeatable | Production compose, env template, and ops scripts exist | Validate release rehearsal on a clean machine |
-| Quality | Prevent regressions before release | Backend, frontend, Docker CI exist | Add deeper E2E and migration checks |
+| Deployment | Make private deployment repeatable | Production compose, ops scripts, and release rehearsal command exist | Rehearse clean-environment restore |
+| Quality | Prevent regressions before release | Backend, frontend, Docker CI, smoke, and rehearsal gates exist | Add release notes and tagging checks |
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
-| Data Safety | Protect user documents and database | Backup/restore scripts and docs exist | Rehearse restore on a clean machine |
+| Data Safety | Protect user documents and database | Backup/restore scripts and rehearsal report prompts exist | Rehearse restore on a clean machine |
 | UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and dismissible tips |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist docs exist | Maintain iteration records and release notes |
@@ -121,11 +121,26 @@ Delivered scope:
 
 Goal: prove the private deployment can be installed, upgraded, backed up, restored, and smoke-tested from a clean environment.
 
+Status: completed.
+
+Record: [2026-05-29 I-007 Release Candidate Rehearsal](iterations/2026-05-29-i007-release-candidate-rehearsal.md)
+
+Delivered scope:
+
+- Add a repeatable release rehearsal command.
+- Generate ignored Markdown evidence reports under `release-evidence/`.
+- Rebuild Docker and smoke-test through the frontend proxy.
+- Document the manual clean-environment backup/restore drill.
+
+### I-008 Release Notes and Tagging Preparation
+
+Goal: prepare the project for an auditable v1.0 release tag.
+
 Default scope:
 
-- Rehearse production compose setup with `.env.production`.
-- Run backup and restore scripts against a clean volume.
-- Document release candidate evidence and remaining risks.
+- Add release notes template and v1.0 draft notes.
+- Add tag readiness checks.
+- Document remaining release risks and deferred v1.1 items.
 
 ## Release Gate
 

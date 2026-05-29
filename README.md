@@ -131,6 +131,14 @@ python scripts\smoke_test.py
 
 Release checks are listed in [docs/release-checklist.md](docs/release-checklist.md).
 
+Release candidate rehearsal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\release-rehearsal.ps1
+```
+
+The rehearsal report is generated under `release-evidence/`.
+
 ## Security
 
 Private deployment security controls and rotation steps are documented in [docs/security-hardening.md](docs/security-hardening.md).
@@ -146,6 +154,7 @@ DevMemory is iterated toward a professional private-deployment release through e
 - Roadmap: [docs/professional-release-roadmap.md](docs/professional-release-roadmap.md)
 - Iteration template: [docs/iteration-template.md](docs/iteration-template.md)
 - Iteration records: [docs/iterations](docs/iterations)
+- Release rehearsal: [docs/release-candidate-rehearsal.md](docs/release-candidate-rehearsal.md)
 
 ## Backup and Restore
 
@@ -163,6 +172,7 @@ End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
 - `frontend/src/components`: course, upload, chat, study generation, mind map, and progress UI.
 - `infra/postgres/init.sql`: enables the pgvector extension.
 - `scripts/smoke_test.py`: API-based end-to-end smoke test.
+- `scripts/release_rehearsal.py`: release-candidate gate runner and evidence report generator.
 
 ## Notes
 
