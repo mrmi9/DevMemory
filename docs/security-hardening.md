@@ -37,6 +37,8 @@ These limits are best-effort for the single-node Docker Compose deployment. They
 
 Uploads are streamed to disk and rejected with HTTP `413` when they exceed `STUDY_MAX_UPLOAD_BYTES`. Oversized partial files are removed before the API returns the error.
 
+The private deployment frontend nginx proxy sets `client_max_body_size 64m`, which is intentionally higher than the default backend limit of 50 MB so oversized files are handled by the backend and returned as a structured API error instead of an nginx HTML error page. If you raise `STUDY_MAX_UPLOAD_BYTES` above 50 MB, raise the nginx limit in `frontend/nginx.conf` as well and rebuild the frontend container.
+
 Uploaded file deletion remains constrained to `STUDY_UPLOAD_DIR`. The backend resolves the target path and removes it only when it is inside the upload root and is a file.
 
 ## Secret Rotation

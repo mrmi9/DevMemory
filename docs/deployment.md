@@ -104,6 +104,22 @@ python scripts/smoke_test.py --base-url http://127.0.0.1:5173/api --username <us
 
 The private deployment compose file does not publish the backend port. Smoke testing a production stack should use the frontend nginx `/api` proxy at `http://127.0.0.1:5173/api`.
 
+## Upload Size Limits
+
+The default backend limit is `STUDY_MAX_UPLOAD_BYTES=52428800`, which allows files up to 50 MB. The private frontend nginx proxy allows request bodies up to 64 MB so normal uploads reach the backend instead of being rejected by nginx with an HTML `413` page.
+
+If uploads larger than 50 MB are required, update both values before rebuilding:
+
+```env
+STUDY_MAX_UPLOAD_BYTES=<new byte limit>
+```
+
+```nginx
+client_max_body_size <new proxy limit>;
+```
+
+Keep the nginx value slightly higher than the backend byte limit to account for multipart form overhead.
+
 ## Release Candidate Rehearsal
 
 Before tagging or distributing a release candidate, run:

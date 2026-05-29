@@ -426,6 +426,7 @@ export class ApiClient {
       }
     } catch {
       if (this.isHtmlError(trimmedMessage)) {
+        if (status === 413) return '上传文件过大，请压缩文件或提高上传大小限制'
         if ([502, 503, 504].includes(status)) return '服务暂时不可用，请稍后重试'
         return `请求失败，服务返回了异常页面（HTTP ${status}）`
       }
