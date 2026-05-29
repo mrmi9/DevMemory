@@ -14,6 +14,14 @@ REQUIRED_RELEASE_NOTE_SECTIONS = [
     "## Deferred to v1.1",
 ]
 
+REQUIRED_RESTORE_EVIDENCE_FIELDS = [
+    "Operator:",
+    "Environment:",
+    "Started at:",
+    "Restore drill result:",
+    "Smoke verification result:",
+]
+
 
 @dataclass(frozen=True)
 class ReleaseReadinessResult:
@@ -69,11 +77,35 @@ def check_release_readiness(version: str, root: Path | str = ".", git_status: st
     else:
         failures.append("roadmap must mark I-008 Release Notes and Tagging Preparation completed")
 
+    i009_section = _markdown_section(roadmap, "### I-009 Clean Restore Drill Evidence")
+    if i009_section and "Status: completed" in i009_section:
+        passed_checks.append("roadmap marks I-009 completed")
+    else:
+        failures.append("roadmap must mark I-009 Clean Restore Drill Evidence completed")
+
     iteration_records = list((root_path / "docs" / "iterations").glob("*i008*release*tag*.md"))
     if iteration_records:
         passed_checks.append("I-008 iteration record exists")
     else:
         failures.append("I-008 iteration record missing")
+
+    restore_iteration_records = list((root_path / "docs" / "iterations").glob("*i009*restore*drill*evidence*.md"))
+    if restore_iteration_records:
+        passed_checks.append("I-009 iteration record exists")
+    else:
+        failures.append("I-009 iteration record missing")
+
+    restore_evidence_path = root_path / "release-evidence" / "restore-drill.md"
+    if restore_evidence_path.exists():
+        passed_checks.append("restore drill evidence exists")
+        restore_evidence = restore_evidence_path.read_text(encoding="utf-8")
+        for field_name in REQUIRED_RESTORE_EVIDENCE_FIELDS:
+            if field_name in restore_evidence:
+                passed_checks.append(f"restore drill evidence includes {field_name}")
+            else:
+                failures.append(f"restore drill evidence missing field: {field_name}")
+    else:
+        failures.append("restore drill evidence missing: release-evidence/restore-drill.md")
 
     return ReleaseReadinessResult(
         version=version,

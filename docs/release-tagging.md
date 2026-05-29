@@ -19,6 +19,7 @@ The check verifies:
 - The release checklist references the release notes and version.
 - The roadmap marks I-008 completed.
 - The I-008 iteration record exists.
+- `release-evidence/restore-drill.md` exists and records operator, environment, start time, restore result, and smoke result.
 
 ## Tag Command
 
@@ -36,6 +37,7 @@ Do not tag from a dirty worktree or from a commit that has not passed GitHub Act
 Keep these artifacts with the release record:
 
 - `release-evidence/release-candidate-rehearsal.md`.
+- `release-evidence/restore-drill.md`.
 - GitHub Actions run URL.
 - Clean-environment restore notes.
 - Any manual AI quality review notes.

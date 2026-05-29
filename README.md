@@ -145,6 +145,12 @@ Release tag readiness:
 python scripts\release_tag_check.py --version v1.0.0
 ```
 
+Restore drill evidence:
+
+```powershell
+python scripts\restore_drill_report.py --output release-evidence\restore-drill.md
+```
+
 ## Security
 
 Private deployment security controls and rotation steps are documented in [docs/security-hardening.md](docs/security-hardening.md).
@@ -182,6 +188,7 @@ End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
 - `scripts/smoke_test.py`: API-based end-to-end smoke test.
 - `scripts/release_rehearsal.py`: release-candidate gate runner and evidence report generator.
 - `scripts/release_tag_check.py`: release notes and tag readiness checker.
+- `scripts/restore_drill_report.py`: clean restore drill evidence report generator.
 
 ## Notes
 

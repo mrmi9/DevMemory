@@ -31,14 +31,14 @@ Out of scope for v1.0:
 
 | Track | Goal | Current State | Next Direction |
 | --- | --- | --- | --- |
-| Deployment | Make private deployment repeatable | Production compose, ops scripts, and release rehearsal command exist | Rehearse clean-environment restore |
+| Deployment | Make private deployment repeatable | Production compose, ops scripts, release rehearsal, and restore evidence gate exist | Keep deployment docs aligned with product changes |
 | Quality | Prevent regressions before release | Backend, frontend, Docker CI, smoke, rehearsal, and tag readiness gates exist | Keep release notes current for each tag |
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
-| Data Safety | Protect user documents and database | Backup/restore scripts and rehearsal report prompts exist | Rehearse restore on a clean machine |
-| UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and dismissible tips |
+| Data Safety | Protect user documents and database | Backup/restore scripts and clean restore evidence gate exist | Preserve restore evidence during release tagging |
+| UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and learning workflow polish |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
-| Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, and release notes docs exist | Maintain iteration records and release notes |
+| Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, restore evidence, and release notes docs exist | Keep docs current while product features evolve |
 
 ## Planned Iterations
 
@@ -150,11 +150,26 @@ Delivered scope:
 
 Goal: prove that a release backup can be restored in a clean environment before the v1.0 tag is created.
 
+Status: completed.
+
+Record: [2026-05-29 I-009 Clean Restore Drill Evidence](iterations/2026-05-29-i009-clean-restore-drill-evidence.md)
+
+Delivered scope:
+
+- Add a restore drill evidence report command.
+- Require restore evidence during tag readiness checks.
+- Document restore evidence archival outside Git.
+- Update the v1.0 release notes with the restore evidence gate.
+
+### I-010 Guided First-Run Checklist and Learning Workflow Polish
+
+Goal: improve the user-visible learning workflow now that v1.0 release operations are gated.
+
 Default scope:
 
-- Run the database and upload restore drill on a clean machine or clean Docker context.
-- Archive the release rehearsal and restore evidence outside Git.
-- Update the v1.0 release notes with final evidence.
+- Add a guided first-run checklist for login, course creation, upload, parsing, Q&A, and generated study materials.
+- Make the learning workflow easier to resume after document parsing or generation failures.
+- Keep release documentation current only where product behavior changes.
 
 ## Release Gate
 

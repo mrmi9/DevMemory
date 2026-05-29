@@ -11,11 +11,16 @@ def write_minimal_release_files(root: Path, version: str = "v1.0.0") -> None:
         encoding="utf-8",
     )
     (root / "docs" / "professional-release-roadmap.md").write_text(
-        "### I-008 Release Notes and Tagging Preparation\n\nStatus: completed.\n",
+        "### I-008 Release Notes and Tagging Preparation\n\nStatus: completed.\n\n"
+        "### I-009 Clean Restore Drill Evidence\n\nStatus: completed.\n",
         encoding="utf-8",
     )
     (root / "docs" / "iterations" / "2026-05-29-i008-release-notes-tagging.md").write_text(
         "## Acceptance Gates\n- [x] Release tag readiness check passes.\n",
+        encoding="utf-8",
+    )
+    (root / "docs" / "iterations" / "2026-05-29-i009-clean-restore-drill-evidence.md").write_text(
+        "## Acceptance Gates\n- [x] Restore drill evidence gate passes.\n",
         encoding="utf-8",
     )
     (root / "docs" / "release-notes" / f"{version}.md").write_text(
@@ -25,6 +30,20 @@ def write_minimal_release_files(root: Path, version: str = "v1.0.0") -> None:
         "## Verification Evidence\nAll release gates pass.\n\n"
         "## Known Risks\nRestore drill must be recorded.\n\n"
         "## Deferred to v1.1\nTeam roles.\n",
+        encoding="utf-8",
+    )
+    write_restore_evidence(root)
+
+
+def write_restore_evidence(root: Path) -> None:
+    (root / "release-evidence").mkdir(parents=True, exist_ok=True)
+    (root / "release-evidence" / "restore-drill.md").write_text(
+        "# DevMemory Restore Drill Evidence\n\n"
+        "Operator: Release Operator\n\n"
+        "Environment: Clean Docker context\n\n"
+        "Started at: 2026-05-29T18:00:00+08:00\n\n"
+        "Restore drill result: PASS\n\n"
+        "Smoke verification result: PASS\n\n",
         encoding="utf-8",
     )
 
@@ -86,6 +105,20 @@ def test_release_tag_check_requires_i008_section_to_be_completed(tmp_path):
     assert "roadmap must mark I-008 Release Notes and Tagging Preparation completed" in result.failures
 
 
+def test_release_tag_check_requires_i009_section_to_be_completed(tmp_path):
+    write_minimal_release_files(tmp_path)
+    (tmp_path / "docs" / "professional-release-roadmap.md").write_text(
+        "### I-008 Release Notes and Tagging Preparation\n\nStatus: completed.\n\n"
+        "### I-009 Clean Restore Drill Evidence\n\nDefault scope:\n- Add restore evidence.\n",
+        encoding="utf-8",
+    )
+
+    result = check_release_readiness("v1.0.0", root=tmp_path, git_status="")
+
+    assert result.ready is False
+    assert "roadmap must mark I-009 Clean Restore Drill Evidence completed" in result.failures
+
+
 def test_release_tag_check_accepts_checklist_relative_release_note_link(tmp_path):
     write_minimal_release_files(tmp_path)
     (tmp_path / "docs" / "release-checklist.md").write_text(
@@ -97,3 +130,40 @@ def test_release_tag_check_accepts_checklist_relative_release_note_link(tmp_path
 
     assert result.ready is True
     assert "release checklist links release notes" in result.passed_checks
+
+
+def test_release_tag_check_rejects_missing_restore_evidence(tmp_path):
+    write_minimal_release_files(tmp_path)
+    (tmp_path / "release-evidence" / "restore-drill.md").unlink()
+
+    result = check_release_readiness("v1.0.0", root=tmp_path, git_status="")
+
+    assert result.ready is False
+    assert "restore drill evidence missing: release-evidence/restore-drill.md" in result.failures
+
+
+def test_release_tag_check_rejects_restore_evidence_without_smoke_result(tmp_path):
+    write_minimal_release_files(tmp_path)
+    (tmp_path / "release-evidence" / "restore-drill.md").write_text(
+        "# DevMemory Restore Drill Evidence\n\n"
+        "Operator: Release Operator\n\n"
+        "Environment: Clean Docker context\n\n"
+        "Started at: 2026-05-29T18:00:00+08:00\n\n"
+        "Restore drill result: PASS\n\n",
+        encoding="utf-8",
+    )
+
+    result = check_release_readiness("v1.0.0", root=tmp_path, git_status="")
+
+    assert result.ready is False
+    assert "restore drill evidence missing field: Smoke verification result:" in result.failures
+
+
+def test_release_tag_check_accepts_complete_restore_evidence(tmp_path):
+    write_minimal_release_files(tmp_path)
+
+    result = check_release_readiness("v1.0.0", root=tmp_path, git_status="")
+
+    assert result.ready is True
+    assert "restore drill evidence exists" in result.passed_checks
+    assert "restore drill evidence includes Smoke verification result:" in result.passed_checks

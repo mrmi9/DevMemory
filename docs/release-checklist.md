@@ -101,7 +101,11 @@ The generated report is written under `release-evidence/` and must show all auto
 - Review [release-tagging.md](release-tagging.md).
 - Confirm release notes include deployment notes, verification evidence, known risks, and deferred v1.1 items.
 - Confirm the release rehearsal report has been archived outside Git.
-- Confirm clean-environment restore evidence has been recorded.
+- Confirm clean-environment restore evidence has been recorded at `release-evidence/restore-drill.md`.
+
+```powershell
+python scripts\restore_drill_report.py --output release-evidence\restore-drill.md
+```
 
 ```powershell
 python scripts\release_tag_check.py --version v1.0.0
@@ -145,6 +149,7 @@ The smoke test must complete login, temporary course creation, Markdown upload, 
 - Confirm restore commands require `--yes` before running destructive operations.
 - Restore to a clean environment at least once before the first v1.0 release.
 - Verify restored courses, documents, and question answering.
+- Archive `release-evidence/restore-drill.md` outside Git.
 
 ## Upgrade and Rollback
 

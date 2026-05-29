@@ -117,3 +117,21 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 3. Log in.
 4. Confirm courses and documents appear.
 5. Open at least one uploaded document preview or run a knowledge-base question against an existing course.
+
+## Clean Restore Drill Evidence
+
+Before tagging `v1.0.0`, record restore evidence in an ignored report:
+
+```powershell
+python scripts\restore_drill_report.py --output release-evidence\restore-drill.md
+```
+
+Then run the recorded backup, restore, startup, and smoke commands in a clean Docker context or clean machine. Update the generated report if the operator, environment, start time, restore result, or smoke result differs from the defaults.
+
+The release tag readiness check requires this report:
+
+```powershell
+python scripts\release_tag_check.py --version v1.0.0
+```
+
+`release-evidence/` is intentionally ignored by Git. Archive `release-evidence/restore-drill.md` with the release evidence instead of committing it.
