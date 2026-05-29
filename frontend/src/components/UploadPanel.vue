@@ -25,10 +25,9 @@ const metadataSaving = ref(false)
 const documentsPendingDelete = ref<DocumentItem[]>([])
 const deleteError = ref('')
 let refreshTimer: ReturnType<typeof setInterval> | undefined
+let documentStateKey = ''
 
-const hasProcessingDocuments = computed(() =>
-  documents.value.some((document) => ['uploaded', 'processing'].includes(document.status) || document.latest_job?.status === 'queued')
-)
+const hasProcessingDocuments = computed(() => documents.value.some(isProcessingDocument))
 const selectedDocuments = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)))
 const failedDocuments = computed(() => documents.value.filter(isFailedDocument))
 const visibleDocuments = computed(() => {
@@ -92,11 +91,16 @@ async function loadDocuments(showLoading = true) {
     selectedDocumentIds.value = new Set()
     chunks.value = []
     jobs.value = []
+    documentStateKey = ''
     return
   }
   if (showLoading) loading.value = true
   try {
-    documents.value = await api.listDocuments(store.selectedCourseId)
+    const nextDocuments = await api.listDocuments(store.selectedCourseId)
+    const nextDocumentStateKey = documentsStateKey(nextDocuments)
+    const shouldNotifyProgress = Boolean(documentStateKey) && documentStateKey !== nextDocumentStateKey
+    documents.value = nextDocuments
+    documentStateKey = nextDocumentStateKey
     selectedDocumentIds.value = new Set([...selectedDocumentIds.value].filter((id) => documents.value.some((document) => document.id === id)))
     if (selectedDocument.value) {
       selectedDocument.value = documents.value.find((document) => document.id === selectedDocument.value?.id) ?? null
@@ -105,11 +109,26 @@ async function loadDocuments(showLoading = true) {
         jobs.value = []
       }
     }
+    if (shouldNotifyProgress) {
+      store.markProgressChanged()
+    }
   } catch (error) {
     message.value = error instanceof Error ? error.message : String(error)
   } finally {
     loading.value = false
   }
+}
+
+function documentsStateKey(nextDocuments: DocumentItem[]) {
+  return nextDocuments
+    .map((document) => [
+      document.id,
+      document.status,
+      document.chunk_count,
+      document.latest_job?.status ?? '',
+      document.latest_job?.progress ?? ''
+    ].join(':'))
+    .join('|')
 }
 
 function toggleDocumentSelection(documentId: string, checked: boolean) {
@@ -208,6 +227,8 @@ async function confirmDeleteDocuments() {
       jobs.value = []
     }
     message.value = `已删除 ${targets.length} 份资料`
+    documentStateKey = documentsStateKey(documents.value)
+    store.markProgressChanged()
     documentsPendingDelete.value = []
   } catch (error) {
     deleteError.value = error instanceof Error ? error.message : String(error)
@@ -285,6 +306,8 @@ async function upload(event: Event) {
   try {
     const document = await api.uploadDocument(store.selectedCourseId, file)
     documents.value.unshift(document)
+    documentStateKey = documentsStateKey(documents.value)
+    store.markProgressChanged()
     message.value = '已上传，Worker 会继续解析和向量化'
     await loadDocuments(false)
   } catch (error) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { ClipboardList, FileText, Layers, MessageSquare, NotebookPen, Pencil, RefreshCw, Send, Trash2 } from 'lucide-vue-next'
 import AppModal from './AppModal.vue'
 import { api, type ChatResponse, type ChatSession, type DocumentItem } from '../api'
@@ -32,6 +32,7 @@ const sessionPendingRename = ref<ChatSession | null>(null)
 const sessionRenameTitle = ref('')
 const sessionPendingDelete = ref<ChatSession | null>(null)
 const modalError = ref('')
+let refreshTimer: ReturnType<typeof setInterval> | undefined
 
 const filteredSessions = computed(() => {
   const keyword = sessionSearch.value.trim().toLowerCase()
@@ -39,7 +40,8 @@ const filteredSessions = computed(() => {
   return sessions.value.filter((session) => session.title.toLowerCase().includes(keyword))
 })
 const selectedAskDocumentIds = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)).map((document) => document.id))
-const searchableDocuments = computed(() => documents.value.filter((document) => document.chunk_count > 0 && !['failed', 'uploaded', 'processing'].includes(document.status)))
+const hasProcessingDocuments = computed(() => documents.value.some(isProcessingDocument))
+const searchableDocuments = computed(() => documents.value.filter(isSearchableDocument))
 const askDisabled = computed(() => busy.value || !store.selectedCourseId || !searchableDocuments.value.length)
 const emptyAnswerTitle = computed(() => {
   if (!store.selectedCourseId) return '先创建或选择课程'
@@ -65,6 +67,39 @@ watch(
   { immediate: true }
 )
 
+watch(
+  () => store.progressRefreshKey,
+  () => {
+    void loadDocuments(false)
+  }
+)
+
+refreshTimer = setInterval(() => {
+  if (store.selectedCourseId && hasProcessingDocuments.value) {
+    void loadDocuments(false)
+  }
+}, 4000)
+
+onBeforeUnmount(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
+})
+
+function documentRuntimeStatus(document: DocumentItem) {
+  return document.latest_job?.status || document.status
+}
+
+function isFailedDocument(document: DocumentItem) {
+  return document.status === 'failed' || document.latest_job?.status === 'failed'
+}
+
+function isProcessingDocument(document: DocumentItem) {
+  return ['uploaded', 'processing', 'queued'].includes(documentRuntimeStatus(document))
+}
+
+function isSearchableDocument(document: DocumentItem) {
+  return document.chunk_count > 0 && !isFailedDocument(document) && !isProcessingDocument(document)
+}
+
 async function loadSessions() {
   if (!store.selectedCourseId) {
     sessions.value = []
@@ -77,7 +112,7 @@ async function loadSessions() {
   }
 }
 
-async function loadDocuments() {
+async function loadDocuments(reportErrors = true) {
   if (!store.selectedCourseId) {
     documents.value = []
     selectedDocumentIds.value = new Set()
@@ -87,7 +122,9 @@ async function loadDocuments() {
     documents.value = await api.listDocuments(store.selectedCourseId)
     selectedDocumentIds.value = new Set([...selectedDocumentIds.value].filter((id) => documents.value.some((document) => document.id === id)))
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : String(caught)
+    if (reportErrors) {
+      error.value = caught instanceof Error ? caught.message : String(caught)
+    }
   }
 }
 

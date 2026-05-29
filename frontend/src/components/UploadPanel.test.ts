@@ -399,6 +399,50 @@ describe('UploadPanel', () => {
     expect(wrapper.text()).toContain('已存在同名资料“network.pdf”')
   })
 
+  it('notifies other panels when an uploaded document enters the parsing queue', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useStudyStore()
+    store.selectedCourseId = 'course-1'
+    const markProgressChanged = vi.spyOn(store, 'markProgressChanged')
+    const uploadedDocument = {
+      id: 'document-1',
+      course_id: 'course-1',
+      title: 'network.md',
+      original_filename: 'network.md',
+      kind: 'markdown',
+      status: 'uploaded',
+      error_message: '',
+      text_preview: '',
+      created_at: '2026-05-29T14:00:00',
+      updated_at: '2026-05-29T14:00:00',
+      chunk_count: 0,
+      latest_job: { id: 'job-1', status: 'queued', progress: 0, error_message: '' }
+    }
+    vi.mocked(api.listDocuments)
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([uploadedDocument])
+    vi.mocked(api.uploadDocument).mockResolvedValue(uploadedDocument)
+
+    const wrapper = mount(UploadPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    const input = wrapper.find('input[type="file"]')
+    Object.defineProperty(input.element, 'files', {
+      value: [new File(['SNMP notes'], 'network.md', { type: 'text/markdown' })],
+      configurable: true
+    })
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(api.uploadDocument).toHaveBeenCalled()
+    expect(markProgressChanged).toHaveBeenCalled()
+  })
+
   it('edits document chapter and tags for course material grouping', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)

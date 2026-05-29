@@ -24,6 +24,7 @@ vi.mock('../api', () => ({
 describe('ChatPanel', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.useRealTimers()
     document.body.innerHTML = ''
   })
 
@@ -240,6 +241,62 @@ describe('ChatPanel', () => {
     expect(wrapper.text()).toContain('先在课程资料库上传并等待解析完成')
     expect(wrapper.find('[data-testid="ask-button"]').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
+  })
+
+  it('refreshes parsing state and enables asking after documents become searchable', async () => {
+    vi.useFakeTimers()
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    useStudyStore().selectedCourseId = 'course-1'
+    vi.mocked(api.listChatSessions).mockResolvedValue([])
+    vi.mocked(api.listDocuments)
+      .mockResolvedValueOnce([
+        {
+          id: 'document-1',
+          course_id: 'course-1',
+          title: 'network.md',
+          original_filename: 'network.md',
+          kind: 'markdown',
+          status: 'processing',
+          error_message: '',
+          text_preview: '',
+          created_at: '2026-05-29T14:00:00',
+          updated_at: '2026-05-29T14:00:30',
+          chunk_count: 0,
+          latest_job: { id: 'job-1', status: 'processing', progress: 40, error_message: '' }
+        }
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: 'document-1',
+          course_id: 'course-1',
+          title: 'network.md',
+          original_filename: 'network.md',
+          kind: 'markdown',
+          status: 'ready',
+          error_message: '',
+          text_preview: 'SNMP notes',
+          created_at: '2026-05-29T14:00:00',
+          updated_at: '2026-05-29T14:01:00',
+          chunk_count: 5,
+          latest_job: { id: 'job-1', status: 'succeeded', progress: 100, error_message: '' }
+        }
+      ])
+
+    const wrapper = mount(ChatPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="ask-button"]').attributes('disabled')).toBeDefined()
+
+    await vi.advanceTimersByTimeAsync(4000)
+    await flushPromises()
+
+    expect(api.listDocuments).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="ask-button"]').attributes('disabled')).toBeUndefined()
   })
 
   it('turns a cited assistant answer into study assets', async () => {
