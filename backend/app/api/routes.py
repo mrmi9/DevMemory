@@ -44,7 +44,7 @@ from app.schemas import (
 )
 from app.services.document_parser import detect_document_kind
 from app.services.document_library import serialize_chunk_row, serialize_document_card
-from app.services.embeddings import cosine_similarity, get_embedding_provider, vector_values
+from app.services.embeddings import HashEmbeddingProvider, cosine_similarity, get_embedding_provider, vector_values
 from app.services.llm import DeepSeekClient
 from app.services.runtime_config import get_deepseek_runtime_config, mask_secret, save_deepseek_runtime_config
 from app.rate_limit import InMemoryRateLimiter
@@ -1072,6 +1072,8 @@ def _chat_session_row(session: ChatSession) -> dict:
 def _retrieve_chunks(db: Session, user_id: str, question: str, course_id: str | None, document_ids: list[str]) -> list[RetrievedChunk]:
     provider = get_embedding_provider()
     question_vector = provider.embed([question])[0]
+    if isinstance(provider, HashEmbeddingProvider):
+        return _retrieve_chunks_in_memory(db, user_id, course_id, document_ids, question_vector, provider)
     query = _chunk_retrieval_query(db, user_id, course_id, document_ids)
     try:
         distance = DocumentChunk.embedding.cosine_distance(question_vector).label("distance")
@@ -1100,11 +1102,13 @@ def _retrieve_chunks_in_memory(
     course_id: str | None,
     document_ids: list[str],
     question_vector: list[float],
+    provider=None,
 ) -> list[RetrievedChunk]:
     query = _chunk_retrieval_query(db, user_id, course_id, document_ids)
     scored = []
     for chunk, document, course in query.limit(500).all():
-        scored.append((cosine_similarity(question_vector, vector_values(chunk.embedding)), chunk, document, course))
+        chunk_vector = provider.embed([chunk.text])[0] if isinstance(provider, HashEmbeddingProvider) else vector_values(chunk.embedding)
+        scored.append((cosine_similarity(question_vector, chunk_vector), chunk, document, course))
     scored.sort(key=lambda item: item[0], reverse=True)
     return [_retrieved_chunk_from_row(chunk, document, course, score) for score, chunk, document, course in scored[:6]]
 

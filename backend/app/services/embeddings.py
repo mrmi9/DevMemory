@@ -82,14 +82,39 @@ def get_embedding_provider(provider_name: str | None = None, dimensions: int | N
 
 def _tokenize(text: str):
     buffer = []
-    for char in text.lower():
-        if char.isalnum() or "\u4e00" <= char <= "\u9fff":
-            buffer.append(char)
-        elif buffer:
+    chinese_buffer = []
+
+    def flush_word_buffer():
+        nonlocal buffer
+        if buffer:
             yield "".join(buffer)
             buffer = []
-    if buffer:
-        yield "".join(buffer)
+
+    def flush_chinese_buffer():
+        nonlocal chinese_buffer
+        if not chinese_buffer:
+            return
+        sequence = "".join(chinese_buffer)
+        for char in chinese_buffer:
+            yield char
+        for size in (2, 3, 4):
+            if len(sequence) >= size:
+                for index in range(len(sequence) - size + 1):
+                    yield sequence[index:index + size]
+        chinese_buffer = []
+
+    for char in text.lower():
+        if "\u4e00" <= char <= "\u9fff":
+            yield from flush_word_buffer()
+            chinese_buffer.append(char)
+        elif char.isalnum():
+            yield from flush_chinese_buffer()
+            buffer.append(char)
+        else:
+            yield from flush_word_buffer()
+            yield from flush_chinese_buffer()
+    yield from flush_word_buffer()
+    yield from flush_chinese_buffer()
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:

@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from app.services.embeddings import HashEmbeddingProvider, OpenAICompatibleEmbeddingProvider, get_embedding_provider
+from app.services.embeddings import HashEmbeddingProvider, OpenAICompatibleEmbeddingProvider, cosine_similarity, get_embedding_provider
 
 
 class EmbeddingTests(unittest.TestCase):
@@ -23,6 +23,13 @@ class EmbeddingTests(unittest.TestCase):
         vectors = provider.embed(["SNMP 协议", "TCP 拥塞控制"])
 
         self.assertNotEqual(vectors[0], vectors[1])
+
+    def test_hash_embedding_provider_matches_overlapping_chinese_terms(self):
+        provider = HashEmbeddingProvider(dimensions=384)
+
+        question, document = provider.embed(["什么是网络协议", "网络协议是计算机通信规则"])
+
+        self.assertGreater(cosine_similarity(question, document), 0.1)
 
 
 def test_get_embedding_provider_uses_configured_hash_dimensions():
