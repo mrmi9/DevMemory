@@ -3,14 +3,16 @@ from typing import Any
 import httpx
 
 from app.config import get_settings
+from app.services.runtime_config import get_deepseek_runtime_config
 
 
 class DeepSeekClient:
     def __init__(self, api_key: str | None = None, base_url: str | None = None, model: str | None = None) -> None:
         settings = get_settings()
-        self.api_key = api_key if api_key is not None else settings.deepseek_api_key
-        self.base_url = (base_url or settings.deepseek_base_url).rstrip("/")
-        self.model = model or settings.deepseek_model
+        runtime_config = get_deepseek_runtime_config(settings=settings)
+        self.api_key = api_key if api_key is not None else runtime_config.api_key
+        self.base_url = (base_url or runtime_config.base_url).rstrip("/")
+        self.model = model or runtime_config.model
 
     async def complete(self, prompt: str, temperature: float = 0.2) -> str:
         if not self.api_key:

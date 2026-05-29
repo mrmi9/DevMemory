@@ -11,6 +11,19 @@ class LoginResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class AIConfigUpdate(BaseModel):
+    api_key: str | None = None
+    base_url: str | None = None
+    model: str | None = None
+
+
+class AIConfigOut(BaseModel):
+    configured: bool
+    api_key_hint: str | None = None
+    base_url: str
+    model: str
+
+
 class CourseCreate(BaseModel):
     title: str
     description: str = ""

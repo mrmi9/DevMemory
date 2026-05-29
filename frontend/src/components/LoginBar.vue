@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { LogIn, LogOut } from 'lucide-vue-next'
-import { api, type SystemStatus } from '../api'
+import { KeyRound, LogIn, LogOut } from 'lucide-vue-next'
+import { api, type AIConfig, type SystemStatus } from '../api'
 import { useStudyStore } from '../stores/study'
+import AppModal from './AppModal.vue'
 
 const store = useStudyStore()
 const username = ref('admin')
@@ -10,6 +11,13 @@ const password = ref('changeme')
 const message = ref('')
 const isLoggedIn = ref(api.hasToken())
 const systemStatus = ref<SystemStatus | null>(null)
+const aiConfigOpen = ref(false)
+const aiConfig = ref<AIConfig | null>(null)
+const aiConfigBusy = ref(false)
+const aiConfigError = ref('')
+const deepseekApiKey = ref('')
+const deepseekBaseUrl = ref('https://api.deepseek.com')
+const deepseekModel = ref('deepseek-chat')
 
 const aiModeLabel = computed(() => {
   if (!systemStatus.value) return '状态检查中'
@@ -22,13 +30,15 @@ const aiModeDetail = computed(() => {
   return 'DeepSeek 未配置'
 })
 
-onMounted(async () => {
+onMounted(refreshSystemStatus)
+
+async function refreshSystemStatus() {
   try {
     systemStatus.value = await api.systemStatus()
   } catch {
     systemStatus.value = null
   }
-})
+}
 
 async function login() {
   message.value = ''
@@ -46,6 +56,43 @@ function logout() {
   store.logout()
   isLoggedIn.value = false
   message.value = '已退出登录'
+}
+
+async function openAiConfig() {
+  if (!isLoggedIn.value) {
+    message.value = '请先登录后再配置 AI'
+    return
+  }
+  aiConfigOpen.value = true
+  aiConfigError.value = ''
+  deepseekApiKey.value = ''
+  try {
+    aiConfig.value = await api.getAiConfig()
+    deepseekBaseUrl.value = aiConfig.value.base_url
+    deepseekModel.value = aiConfig.value.model
+  } catch (error) {
+    aiConfigError.value = error instanceof Error ? error.message : String(error)
+  }
+}
+
+async function saveAiConfig() {
+  aiConfigBusy.value = true
+  aiConfigError.value = ''
+  try {
+    aiConfig.value = await api.updateAiConfig({
+      api_key: deepseekApiKey.value.trim() || undefined,
+      base_url: deepseekBaseUrl.value.trim(),
+      model: deepseekModel.value.trim()
+    })
+    deepseekApiKey.value = ''
+    await refreshSystemStatus()
+    message.value = 'AI 配置已保存'
+    aiConfigOpen.value = false
+  } catch (error) {
+    aiConfigError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    aiConfigBusy.value = false
+  }
 }
 </script>
 
@@ -65,6 +112,49 @@ function logout() {
       {{ aiModeLabel }}
       <small v-if="aiModeDetail">{{ aiModeDetail }}</small>
     </span>
+    <button
+      type="button"
+      title="配置 DeepSeek API"
+      data-testid="ai-config-button"
+      class="secondary-button"
+      @click="openAiConfig"
+    >
+      <KeyRound :size="18" />
+      <span>AI 配置</span>
+    </button>
     <span class="muted">{{ message || store.error }}</span>
+    <AppModal
+      :open="aiConfigOpen"
+      title="DeepSeek API 配置"
+      confirm-label="保存配置"
+      :busy="aiConfigBusy"
+      :error="aiConfigError"
+      @close="aiConfigOpen = false"
+      @confirm="saveAiConfig"
+    >
+      <div class="stack ai-config-form">
+        <p class="muted">
+          当前状态：{{ aiConfig?.configured ? `已配置 ${aiConfig.api_key_hint || ''}` : '未配置' }}
+        </p>
+        <label>
+          <span>API Key</span>
+          <input
+            v-model="deepseekApiKey"
+            data-testid="deepseek-api-key-input"
+            type="password"
+            autocomplete="off"
+            placeholder="sk-..."
+          />
+        </label>
+        <label>
+          <span>Base URL</span>
+          <input v-model="deepseekBaseUrl" data-testid="deepseek-base-url-input" />
+        </label>
+        <label>
+          <span>模型</span>
+          <input v-model="deepseekModel" data-testid="deepseek-model-input" />
+        </label>
+      </div>
+    </AppModal>
   </form>
 </template>

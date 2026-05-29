@@ -11,6 +11,8 @@ from app.config import get_settings
 from app.database import get_db
 from app.models import ChatMessage, ChatSession, Course, Document, DocumentChunk, GeneratedQuestion, IngestionJob, Mindmap, ProgressRecord, StudyCard, User, WrongNote
 from app.schemas import (
+    AIConfigOut,
+    AIConfigUpdate,
     ChatRequest,
     ChatResponse,
     ChatAssetRequest,
@@ -44,6 +46,7 @@ from app.services.document_parser import detect_document_kind
 from app.services.document_library import serialize_chunk_row, serialize_document_card
 from app.services.embeddings import cosine_similarity, get_embedding_provider, vector_values
 from app.services.llm import DeepSeekClient
+from app.services.runtime_config import get_deepseek_runtime_config, mask_secret, save_deepseek_runtime_config
 from app.rate_limit import InMemoryRateLimiter
 from app.services.rag import RetrievedChunk, build_rag_prompt, evaluate_retrieval_quality
 from app.services.study_library import build_wrong_note_from_question, parse_generated_cards, parse_generated_questions, serialize_generated_question_row, serialize_study_card_row, serialize_wrong_note_row
@@ -57,16 +60,17 @@ ai_rate_limiter = InMemoryRateLimiter()
 @router.get("/system/status")
 def system_status(request: Request, db: Session = Depends(get_db)):
     settings = getattr(request.app.state, "settings", get_settings())
+    deepseek_config = get_deepseek_runtime_config(db, settings)
     checks = {
         "database": _database_status(db),
         "pgvector": _pgvector_status(db),
         "upload_dir": _upload_dir_status(settings.upload_dir),
         "deepseek": {
             "ok": True,
-            "configured": bool(settings.deepseek_api_key),
-            "mode": "online" if settings.deepseek_api_key else "offline_placeholder",
-            "model": settings.deepseek_model,
-            "base_url": settings.deepseek_base_url,
+            "configured": deepseek_config.configured,
+            "mode": "online" if deepseek_config.configured else "offline_placeholder",
+            "model": deepseek_config.model,
+            "base_url": deepseek_config.base_url,
         },
         "embedding": {
             "ok": settings.embedding_dimensions == 384,
@@ -79,9 +83,48 @@ def system_status(request: Request, db: Session = Depends(get_db)):
     return {
         "status": "ok" if all(item.get("ok") for item in checks.values()) else "degraded",
         "environment": settings.environment,
-        "ai_mode": "online" if settings.deepseek_api_key else "offline_placeholder",
+        "ai_mode": "online" if deepseek_config.configured else "offline_placeholder",
         "checks": checks,
     }
+
+
+@router.get("/system/ai-config", response_model=AIConfigOut)
+def get_ai_config(
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AIConfigOut:
+    settings = getattr(request.app.state, "settings", get_settings())
+    config = get_deepseek_runtime_config(db, settings)
+    return AIConfigOut(
+        configured=config.configured,
+        api_key_hint=mask_secret(config.api_key),
+        base_url=config.base_url,
+        model=config.model,
+    )
+
+
+@router.put("/system/ai-config", response_model=AIConfigOut)
+def update_ai_config(
+    payload: AIConfigUpdate,
+    request: Request,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AIConfigOut:
+    settings = getattr(request.app.state, "settings", get_settings())
+    config = save_deepseek_runtime_config(
+        db,
+        api_key=payload.api_key,
+        base_url=payload.base_url,
+        model=payload.model,
+    )
+    config = get_deepseek_runtime_config(db, settings)
+    return AIConfigOut(
+        configured=config.configured,
+        api_key_hint=mask_secret(config.api_key),
+        base_url=config.base_url,
+        model=config.model,
+    )
 
 
 @router.post("/auth/login", response_model=LoginResponse)

@@ -136,6 +136,19 @@ export interface SystemStatus {
   }
 }
 
+export interface AIConfig {
+  configured: boolean
+  api_key_hint: string | null
+  base_url: string
+  model: string
+}
+
+export interface AIConfigUpdate {
+  api_key?: string
+  base_url?: string
+  model?: string
+}
+
 export interface ReviewCard extends StudyCard {
   review_state: 'not_started' | 'needs_reinforcement' | 'mastered'
   next_review_label: string
@@ -180,6 +193,17 @@ export class ApiClient {
 
   async systemStatus() {
     return this.request<SystemStatus>('/system/status', {}, false)
+  }
+
+  async getAiConfig() {
+    return this.request<AIConfig>('/system/ai-config')
+  }
+
+  async updateAiConfig(payload: AIConfigUpdate) {
+    return this.request<AIConfig>('/system/ai-config', {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    })
   }
 
   async listCourses() {

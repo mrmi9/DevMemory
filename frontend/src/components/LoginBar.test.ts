@@ -11,6 +11,8 @@ vi.mock('../api', () => ({
     listCourses: vi.fn(),
     login: vi.fn(),
     logout: vi.fn(),
+    getAiConfig: vi.fn(),
+    updateAiConfig: vi.fn(),
     systemStatus: vi.fn()
   }
 }))
@@ -21,6 +23,8 @@ describe('LoginBar', () => {
     vi.mocked(api.listCourses).mockResolvedValue([])
     vi.mocked(api.login).mockResolvedValue(undefined)
     vi.mocked(api.logout).mockReset()
+    vi.mocked(api.getAiConfig).mockReset()
+    vi.mocked(api.updateAiConfig).mockReset()
     vi.mocked(api.systemStatus).mockReset()
   })
 
@@ -72,5 +76,65 @@ describe('LoginBar', () => {
 
     expect(api.logout).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('已退出登录')
+  })
+
+  it('lets signed-in users configure DeepSeek from the page', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    vi.mocked(api.hasToken).mockReturnValue(true)
+    vi.mocked(api.systemStatus)
+      .mockResolvedValueOnce({
+        status: 'ok',
+        environment: 'production',
+        ai_mode: 'offline_placeholder',
+        checks: {
+          deepseek: { configured: false }
+        }
+      })
+      .mockResolvedValueOnce({
+        status: 'ok',
+        environment: 'production',
+        ai_mode: 'online',
+        checks: {
+          deepseek: { configured: true, model: 'deepseek-chat' }
+        }
+      })
+    vi.mocked(api.getAiConfig).mockResolvedValue({
+      configured: false,
+      api_key_hint: null,
+      base_url: 'https://api.deepseek.com',
+      model: 'deepseek-chat'
+    })
+    vi.mocked(api.updateAiConfig).mockResolvedValue({
+      configured: true,
+      api_key_hint: '••••3456',
+      base_url: 'https://api.deepseek.com',
+      model: 'deepseek-chat'
+    })
+
+    const wrapper = mount(LoginBar, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="ai-config-button"]').trigger('click')
+    await flushPromises()
+    ;(document.body.querySelector('[data-testid="deepseek-api-key-input"]') as HTMLInputElement).value = 'sk-page-123456'
+    ;(document.body.querySelector('[data-testid="deepseek-api-key-input"]') as HTMLInputElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="deepseek-model-input"]') as HTMLInputElement).value = 'deepseek-chat'
+    ;(document.body.querySelector('[data-testid="deepseek-model-input"]') as HTMLInputElement).dispatchEvent(new Event('input'))
+    await wrapper.findComponent({ name: 'AppModal' }).vm.$emit('confirm')
+    await flushPromises()
+
+    expect(api.updateAiConfig).toHaveBeenCalledWith({
+      api_key: 'sk-page-123456',
+      base_url: 'https://api.deepseek.com',
+      model: 'deepseek-chat'
+    })
+    expect(api.systemStatus).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('在线 AI 模式')
+    expect(wrapper.text()).toContain('AI 配置已保存')
   })
 })

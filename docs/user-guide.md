@@ -17,6 +17,17 @@ The login bar shows the current AI mode:
 - Online AI mode: DeepSeek is configured.
 - Offline placeholder AI mode: DeepSeek is not configured, so AI responses are placeholders.
 
+## Configure DeepSeek
+
+After logging in, click `AI 配置` in the login bar to configure DeepSeek from the page.
+
+1. Enter your DeepSeek API Key.
+2. Keep `https://api.deepseek.com` as the Base URL unless you use a compatible private endpoint.
+3. Enter the model name, for example `deepseek-v4-pro`.
+4. Save the configuration.
+
+DevMemory stores the key on the backend and only shows a masked key hint. The full API Key is never returned to the browser after saving. The AI mode refreshes immediately, so Docker does not need to be restarted after changing the key from the page.
+
 ## Create a Course
 
 1. Enter a course name.

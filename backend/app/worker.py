@@ -3,7 +3,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
-from app.database import SessionLocal, create_all
+from app.database import SessionLocal, run_migrations
 from app.models import Document, DocumentChunk, IngestionJob
 from app.services.chunking import chunk_text
 from app.services.document_parser import parse_document_text
@@ -76,7 +76,7 @@ def process_next_job(db: Session) -> bool:
 
 
 def run_forever(poll_seconds: int = 3) -> None:
-    create_all()
+    run_migrations()
     while True:
         with SessionLocal() as db:
             worked = process_next_job(db)
