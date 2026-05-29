@@ -131,7 +131,7 @@ async function saveAiConfig() {
 
 <template>
   <form class="login-bar" @submit.prevent="login">
-    <input v-model="username" aria-label="用户名" placeholder="用户名（例如：admin）" :disabled="isLoggedIn" />
+    <input v-model="username" aria-label="用户名" placeholder="用户名（例如：root）" :disabled="isLoggedIn" />
     <input v-model="password" aria-label="密码" placeholder="密码" type="password" :disabled="isLoggedIn" />
     <button v-if="!isLoggedIn" type="submit" title="登录" :disabled="!username.trim() || !password">
       <LogIn :size="18" />

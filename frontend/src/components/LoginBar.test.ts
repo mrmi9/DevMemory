@@ -81,7 +81,7 @@ describe('LoginBar', () => {
     const passwordInput = wrapper.find('input[aria-label="密码"]')
 
     expect((usernameInput.element as HTMLInputElement).value).toBe('')
-    expect(usernameInput.attributes('placeholder')).toBe('用户名（例如：admin）')
+    expect(usernameInput.attributes('placeholder')).toBe('用户名（例如：root）')
     expect((passwordInput.element as HTMLInputElement).value).toBe('')
     expect((wrapper.find('button[type="submit"]').element as HTMLButtonElement).disabled).toBe(true)
   })
