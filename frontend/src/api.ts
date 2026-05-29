@@ -386,8 +386,9 @@ export class ApiClient {
 
   private formatError(message: string, status: number) {
     if (!message) return `HTTP ${status}`
+    const trimmedMessage = message.trim()
     try {
-      const payload = JSON.parse(message) as { detail?: unknown }
+      const payload = JSON.parse(trimmedMessage) as { detail?: unknown }
       if (typeof payload.detail === 'string') return payload.detail
       if (Array.isArray(payload.detail)) {
         return payload.detail
@@ -400,9 +401,17 @@ export class ApiClient {
           .join('；')
       }
     } catch {
-      return message
+      if (this.isHtmlError(trimmedMessage)) {
+        if ([502, 503, 504].includes(status)) return '服务暂时不可用，请稍后重试'
+        return `请求失败，服务返回了异常页面（HTTP ${status}）`
+      }
+      return trimmedMessage
     }
-    return message
+    return trimmedMessage
+  }
+
+  private isHtmlError(message: string) {
+    return /^<!doctype html/i.test(message) || /^<html[\s>]/i.test(message)
   }
 }
 
