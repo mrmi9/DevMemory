@@ -127,6 +127,9 @@ class StudyCard(Base):
     back: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(80), default="ai")
     mastery: Mapped[int] = mapped_column(Integer, default=0)
+    review_count: Mapped[int] = mapped_column(Integer, default=0)
+    last_reviewed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    next_review_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
 
 

@@ -39,6 +39,12 @@ async function reviewCard(card: ReviewCard, mastery: number) {
   }
 }
 
+function reviewStateLabel(card: ReviewCard) {
+  if (card.review_state === 'mastered') return '已掌握'
+  if (card.review_state === 'not_started') return '未开始'
+  return '需巩固'
+}
+
 onMounted(loadOverview)
 watch(() => store.selectedCourseId, loadOverview)
 watch(() => store.progressRefreshKey, loadOverview)
@@ -68,7 +74,8 @@ watch(() => store.progressRefreshKey, loadOverview)
       <article v-for="card in overview.review?.cards ?? []" :key="card.id" class="review-card">
         <div>
           <strong>{{ card.front }}</strong>
-          <small>{{ card.review_state === 'not_started' ? '未开始' : '需巩固' }} · 掌握度 {{ card.mastery }}/5 · {{ card.next_review_label }}</small>
+          <small>{{ reviewStateLabel(card) }} · 掌握度 {{ card.mastery }}/5</small>
+          <small>下次复习：{{ card.next_review_label }} · 已复习 {{ card.review_count ?? 0 }} 次</small>
         </div>
         <div class="review-actions">
           <button type="button" :disabled="reviewBusy === card.id" @click="reviewCard(card, 1)">忘记</button>

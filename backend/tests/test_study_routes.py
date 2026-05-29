@@ -338,6 +338,9 @@ class FakeStudyCardRow:
     back = "A device-initiated notification."
     source = "ai"
     mastery = 0
+    review_count = 0
+    last_reviewed_at = None
+    next_review_at = None
     created_at = datetime(2026, 5, 29, 16, 20, 0)
 
 
@@ -381,8 +384,9 @@ class UpdateStudyCardDb:
         self.refreshed = row
 
 
-def test_update_study_card_mastery_records_course_progress():
+def test_update_study_card_mastery_records_course_progress(monkeypatch):
     db = UpdateStudyCardDb(FakeStudyCardRow())
+    monkeypatch.setattr(routes, "_now_utc", lambda: datetime(2026, 5, 29, 12, 0, 0))
 
     payload = update_study_card_mastery(
         "card-1",
@@ -392,7 +396,13 @@ def test_update_study_card_mastery_records_course_progress():
     )
 
     assert payload["mastery"] == 4
+    assert payload["review_count"] == 1
+    assert payload["last_reviewed_at"] == "2026-05-29T12:00:00"
+    assert payload["next_review_at"] == "2026-06-01T12:00:00"
     assert db.card.mastery == 4
+    assert db.card.review_count == 1
+    assert db.card.last_reviewed_at == datetime(2026, 5, 29, 12, 0, 0)
+    assert db.card.next_review_at == datetime(2026, 6, 1, 12, 0, 0)
     assert db.progress_query.filter_called is True
     assert db.added_progress_record.user_id == "user-1"
     assert db.added_progress_record.course_id == "course-1"
@@ -592,6 +602,9 @@ class ProgressOverviewDb:
                     "back": "A device notification.",
                     "source": "chat",
                     "mastery": 0,
+                    "review_count": 0,
+                    "last_reviewed_at": None,
+                    "next_review_at": None,
                     "created_at": datetime(2026, 5, 29, 10, 0, 0),
                 },
             )(),
@@ -605,6 +618,9 @@ class ProgressOverviewDb:
                     "back": "A management information base.",
                     "source": "ai",
                     "mastery": 2,
+                    "review_count": 1,
+                    "last_reviewed_at": datetime(2026, 5, 28, 10, 0, 0),
+                    "next_review_at": None,
                     "created_at": datetime(2026, 5, 29, 11, 0, 0),
                 },
             )(),
@@ -618,6 +634,9 @@ class ProgressOverviewDb:
                     "back": "Known.",
                     "source": "ai",
                     "mastery": 5,
+                    "review_count": 2,
+                    "last_reviewed_at": datetime(2026, 5, 27, 10, 0, 0),
+                    "next_review_at": datetime(2026, 6, 5, 10, 0, 0),
                     "created_at": datetime(2026, 5, 29, 12, 0, 0),
                 },
             )(),
@@ -662,3 +681,105 @@ def test_progress_overview_includes_daily_review_queue():
     assert payload["review"]["cards"][0]["review_state"] == "not_started"
     assert payload["review"]["cards"][1]["review_state"] == "needs_reinforcement"
     assert payload["review"]["recent_wrong_notes"][0]["title"] == "SNMP trap mistake"
+
+
+class ScheduledProgressOverviewDb(ProgressOverviewDb):
+    def __init__(self):
+        super().__init__()
+        self.cards = [
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-overdue",
+                    "course_id": "course-1",
+                    "front": "Overdue card",
+                    "back": "Needs review.",
+                    "source": "ai",
+                    "mastery": 2,
+                    "review_count": 2,
+                    "last_reviewed_at": datetime(2026, 5, 20, 10, 0, 0),
+                    "next_review_at": datetime(2026, 5, 28, 10, 0, 0),
+                    "created_at": datetime(2026, 5, 20, 9, 0, 0),
+                },
+            )(),
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-future-low",
+                    "course_id": "course-1",
+                    "front": "Future low card",
+                    "back": "Scheduled later.",
+                    "source": "ai",
+                    "mastery": 1,
+                    "review_count": 1,
+                    "last_reviewed_at": datetime(2026, 5, 29, 10, 0, 0),
+                    "next_review_at": datetime(2026, 5, 30, 10, 0, 0),
+                    "created_at": datetime(2026, 5, 21, 9, 0, 0),
+                },
+            )(),
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-new",
+                    "course_id": "course-1",
+                    "front": "New card",
+                    "back": "Not reviewed.",
+                    "source": "chat",
+                    "mastery": 0,
+                    "review_count": 0,
+                    "last_reviewed_at": None,
+                    "next_review_at": None,
+                    "created_at": datetime(2026, 5, 29, 11, 0, 0),
+                },
+            )(),
+        ]
+
+
+def test_progress_overview_uses_next_review_schedule(monkeypatch):
+    monkeypatch.setattr(routes, "_now_utc", lambda: datetime(2026, 5, 29, 12, 0, 0))
+
+    payload = progress_overview(user=FakeUser(), db=ScheduledProgressOverviewDb())
+
+    assert payload["review"]["today_due"] == 2
+    assert payload["review"]["low_mastery"] == 3
+    assert [card["id"] for card in payload["review"]["cards"]] == ["card-overdue", "card-new"]
+    assert payload["review"]["cards"][0]["next_review_label"] == "已逾期"
+    assert payload["review"]["cards"][0]["next_review_at"] == "2026-05-28T10:00:00"
+    assert payload["review"]["cards"][1]["next_review_label"] == "今天"
+
+
+class MasteredDueProgressOverviewDb(ProgressOverviewDb):
+    def __init__(self):
+        super().__init__()
+        self.cards = [
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-mastered-due",
+                    "course_id": "course-1",
+                    "front": "Mastered but due",
+                    "back": "Long term retention.",
+                    "source": "ai",
+                    "mastery": 4,
+                    "review_count": 3,
+                    "last_reviewed_at": datetime(2026, 5, 20, 10, 0, 0),
+                    "next_review_at": datetime(2026, 5, 28, 10, 0, 0),
+                    "created_at": datetime(2026, 5, 20, 9, 0, 0),
+                },
+            )()
+        ]
+
+
+def test_progress_overview_returns_mastered_cards_when_their_review_is_due(monkeypatch):
+    monkeypatch.setattr(routes, "_now_utc", lambda: datetime(2026, 5, 29, 12, 0, 0))
+
+    payload = progress_overview(user=FakeUser(), db=MasteredDueProgressOverviewDb())
+
+    assert payload["review"]["today_due"] == 1
+    assert payload["review"]["cards"][0]["id"] == "card-mastered-due"
+    assert payload["review"]["cards"][0]["review_state"] == "mastered"
+    assert payload["review"]["cards"][0]["next_review_label"] == "已逾期"

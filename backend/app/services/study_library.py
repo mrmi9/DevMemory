@@ -2,6 +2,8 @@ import re
 
 
 def serialize_study_card_row(card) -> dict:
+    last_reviewed_at = getattr(card, "last_reviewed_at", None)
+    next_review_at = getattr(card, "next_review_at", None)
     return {
         "id": card.id,
         "course_id": card.course_id,
@@ -9,6 +11,9 @@ def serialize_study_card_row(card) -> dict:
         "back": card.back,
         "source": card.source,
         "mastery": card.mastery,
+        "review_count": getattr(card, "review_count", 0) or 0,
+        "last_reviewed_at": last_reviewed_at.isoformat() if last_reviewed_at else None,
+        "next_review_at": next_review_at.isoformat() if next_review_at else None,
         "created_at": card.created_at.isoformat(),
     }
 

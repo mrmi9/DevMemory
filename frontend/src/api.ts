@@ -97,6 +97,9 @@ export interface StudyCard {
   back: string
   source: string
   mastery: number
+  review_count?: number
+  last_reviewed_at?: string | null
+  next_review_at?: string | null
   created_at: string
 }
 

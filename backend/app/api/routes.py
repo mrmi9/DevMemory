@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import uuid4
 
@@ -457,6 +458,10 @@ def update_study_card_mastery(card_id: str, payload: StudyCardUpdate, user: User
         card.back = payload.back.strip()
     if payload.mastery is not None:
         card.mastery = payload.mastery
+        reviewed_at = _now_utc()
+        card.review_count = (card.review_count or 0) + 1
+        card.last_reviewed_at = reviewed_at
+        card.next_review_at = reviewed_at + _review_interval_for_mastery(payload.mastery)
         _upsert_progress_record(
             db=db,
             user_id=user.id,
@@ -782,6 +787,22 @@ def _status_for_mastery(mastery: int) -> str:
     return "not_started"
 
 
+def _now_utc() -> datetime:
+    return datetime.now(UTC).replace(tzinfo=None)
+
+
+def _review_interval_for_mastery(mastery: int) -> timedelta:
+    if mastery <= 1:
+        return timedelta(days=1)
+    if mastery == 2:
+        return timedelta(days=2)
+    if mastery == 3:
+        return timedelta(days=3)
+    if mastery == 4:
+        return timedelta(days=3)
+    return timedelta(days=7)
+
+
 def _review_state_for_mastery(mastery: int) -> str:
     if mastery <= 0:
         return "not_started"
@@ -793,8 +814,8 @@ def _review_state_for_mastery(mastery: int) -> str:
 def _daily_review_queue(db: Session, user_id: str) -> dict:
     cards = db.query(StudyCard).filter(StudyCard.user_id == user_id).all()
     wrong_notes = db.query(WrongNote).filter(WrongNote.user_id == user_id).order_by(WrongNote.created_at.desc()).limit(5).all()
-    due_cards = [card for card in cards if card.mastery < 4]
-    due_cards.sort(key=lambda card: (card.mastery, card.created_at))
+    due_cards = [card for card in cards if _should_show_in_due_queue(card)]
+    due_cards.sort(key=_review_sort_key)
     mastered = sum(1 for card in cards if card.mastery >= 4)
     return {
         "today_due": len(due_cards),
@@ -808,8 +829,41 @@ def _daily_review_queue(db: Session, user_id: str) -> dict:
 def _review_card_row(card: StudyCard) -> dict:
     payload = serialize_study_card_row(card)
     payload["review_state"] = _review_state_for_mastery(card.mastery)
-    payload["next_review_label"] = "今天" if card.mastery < 4 else "已掌握"
+    payload["next_review_label"] = _next_review_label(card)
     return payload
+
+
+def _should_show_in_due_queue(card: StudyCard) -> bool:
+    next_review_at = getattr(card, "next_review_at", None)
+    if next_review_at is not None:
+        return next_review_at <= _now_utc()
+    return card.mastery < 4
+
+
+def _review_sort_key(card: StudyCard):
+    next_review_at = getattr(card, "next_review_at", None)
+    return (
+        next_review_at is None,
+        next_review_at or card.created_at,
+        card.mastery,
+        card.created_at,
+    )
+
+
+def _next_review_label(card: StudyCard) -> str:
+    next_review_at = getattr(card, "next_review_at", None)
+    if not next_review_at:
+        if card.mastery >= 4:
+            return "已掌握"
+        return "今天"
+    now = _now_utc()
+    if next_review_at.date() < now.date():
+        return "已逾期"
+    if next_review_at.date() == now.date():
+        return "今天"
+    if next_review_at.date() == (now + timedelta(days=1)).date():
+        return "明天"
+    return f"下次 {next_review_at.date().isoformat()}"
 
 
 def _normalize_document_tags(tags: list[str]) -> list[str]:

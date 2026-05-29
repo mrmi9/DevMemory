@@ -36,7 +36,7 @@ Out of scope for v1.0:
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and clean restore evidence gate exist | Preserve restore evidence during release tagging |
-| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, document-library controls, answer-to-study actions, daily review queue, and app modals exist | Add spaced-review scheduling and a stronger daily study dashboard |
+| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, document-library controls, answer-to-study actions, app modals, and spaced daily review exist | Add a stronger daily study dashboard |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, restore evidence, and release notes docs exist | Keep docs current while product features evolve |
 
@@ -245,13 +245,29 @@ Delivered scope:
 
 Goal: make the daily review queue schedule future review work instead of acting only as a low-mastery list.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-015 Spaced Review Engine](iterations/2026-05-29-i015-spaced-review-engine.md)
+
+Delivered scope:
 
 - Store review count and next review timing for study cards.
 - Map `忘记`, `模糊`, `掌握`, and `简单` to different next-review intervals.
 - Show next review dates in the progress panel.
 - Prioritize overdue cards before merely low-mastery cards.
 - Keep wrong notes visible as weak-area context.
+
+### I-016 Course Dashboard
+
+Goal: make the first screen answer what the learner should do next today.
+
+Default scope:
+
+- Highlight due reviews for the selected course.
+- Surface failed or processing documents that need attention.
+- Continue the latest useful chat session.
+- Show weak cards and recent wrong notes as the next learning action.
+- Keep the existing detailed panels available below the dashboard.
 
 ## Release Gate
 

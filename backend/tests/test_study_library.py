@@ -52,6 +52,9 @@ class FakeStudyCard:
     back: str = "Network devices and their management data."
     source: str = "ai"
     mastery: int = 0
+    review_count: int = 0
+    last_reviewed_at: datetime | None = None
+    next_review_at: datetime | None = None
     created_at: datetime = datetime(2026, 5, 29, 14, 5, 0)
 
 
@@ -76,6 +79,9 @@ def test_serialize_study_card_row_exposes_review_fields():
         "back": "Network devices and their management data.",
         "source": "ai",
         "mastery": 0,
+        "review_count": 0,
+        "last_reviewed_at": None,
+        "next_review_at": None,
         "created_at": "2026-05-29T14:05:00",
     }
 

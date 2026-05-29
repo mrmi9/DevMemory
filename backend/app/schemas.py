@@ -162,6 +162,9 @@ class StudyCardOut(BaseModel):
     back: str
     source: str
     mastery: int
+    review_count: int = 0
+    last_reviewed_at: str | None = None
+    next_review_at: str | None = None
     created_at: str
 
 

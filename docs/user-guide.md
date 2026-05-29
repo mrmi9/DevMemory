@@ -115,6 +115,7 @@ The progress panel summarizes courses, tracked records, and average mastery. It 
 - Low-mastery card count.
 - Mastered card count.
 - Recent wrong notes.
+- Each card's next review timing and review count.
 
 Use the four review outcomes on each due card:
 
@@ -124,6 +125,8 @@ Use the four review outcomes on each due card:
 - `简单`: mark the card as easy.
 
 Updating a review card refreshes progress and the learning loop.
+
+The four review outcomes schedule the next review. Forgotten cards come back sooner, while easy cards are scheduled farther out. Future-scheduled low-mastery cards still count as weak areas, but they do not reappear in today's due queue until their next review time arrives.
 
 Use the learning loop and progress panel together: the loop tells you what to do next, while progress shows whether your review activity is producing mastery records.
 
