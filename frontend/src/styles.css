@@ -490,6 +490,64 @@ input[type="checkbox"] {
   grid-row: span 2;
 }
 
+.workflow-panel {
+  grid-column: 1 / -1;
+}
+
+.workflow-list {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workflow-step {
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  color: #475569;
+  display: flex;
+  gap: 8px;
+  min-height: 86px;
+  padding: 10px;
+}
+
+.workflow-step.done {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.workflow-step.current {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.workflow-step.locked {
+  opacity: 0.68;
+}
+
+.workflow-step span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workflow-step strong {
+  color: #172033;
+  font-size: 13px;
+}
+
+.workflow-step small {
+  color: inherit;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .answer,
 .chat-message,
 .citation-detail,
@@ -844,6 +902,10 @@ pre {
 @media (max-width: 980px) {
   .workspace,
   .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .workflow-list {
     grid-template-columns: 1fr;
   }
 

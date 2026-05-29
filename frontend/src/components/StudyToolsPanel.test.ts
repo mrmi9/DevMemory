@@ -80,7 +80,7 @@ describe('StudyToolsPanel', () => {
     expect(markProgressChanged).toHaveBeenCalledTimes(1)
   })
 
-  it('deletes study assets from their lists', async () => {
+  it('deletes study assets from their lists with readable controls', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const store = useStudyStore()

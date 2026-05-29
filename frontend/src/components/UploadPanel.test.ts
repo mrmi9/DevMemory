@@ -145,7 +145,7 @@ describe('UploadPanel', () => {
     expect(wrapper.text()).not.toContain('routing.md')
   })
 
-  it('shows troubleshooting guidance for failed parsing jobs', async () => {
+  it('shows troubleshooting guidance for failed parsing jobs in readable Chinese', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     const store = useStudyStore()
@@ -187,5 +187,6 @@ describe('UploadPanel', () => {
     expect(wrapper.text()).toContain('解析失败排查')
     expect(wrapper.text()).toContain('可以先重试解析')
     expect(wrapper.text()).toContain('OCR timeout')
+    expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 })

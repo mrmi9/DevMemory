@@ -45,6 +45,7 @@ describe('LoginBar', () => {
 
     expect(wrapper.text()).toContain('离线占位 AI 模式')
     expect(wrapper.text()).toContain('DeepSeek 未配置')
+    expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 
   it('lets signed-in users log out and clears local study state', async () => {

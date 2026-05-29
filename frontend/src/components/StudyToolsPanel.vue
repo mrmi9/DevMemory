@@ -301,7 +301,7 @@ async function deleteWrongNote(note: WrongNote) {
     <div class="wrong-note">
       <textarea v-model="wrongQuestion" rows="3" placeholder="错题题目"></textarea>
       <textarea v-model="wrongAnswer" rows="2" placeholder="我的答案"></textarea>
-      <textarea v-model="correctAnswer" rows="2" placeholder="参考答案，可留空"></textarea>
+      <textarea v-model="correctAnswer" rows="2" placeholder="参考答案，可以留空"></textarea>
       <button @click="saveWrongNote" :disabled="!!busy || !wrongQuestion.trim()">
         <NotebookPen :size="18" />
         <span>整理错题</span>

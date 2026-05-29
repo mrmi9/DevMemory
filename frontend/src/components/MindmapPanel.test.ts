@@ -74,5 +74,6 @@ describe('MindmapPanel bundle boundary', () => {
     expect(api.listMindmaps).toHaveBeenCalledWith('course-1')
     expect(api.deleteMindmap).toHaveBeenCalledWith('mindmap-1')
     expect(wrapper.text()).not.toContain('SNMP 导图')
+    expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 })

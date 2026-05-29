@@ -27,6 +27,20 @@ The new course becomes the active course.
 
 If this is the first time using DevMemory, the course panel explains that the first step is creating a course. All later materials, Q&A, study assets, mind maps, and progress are grouped under the active course.
 
+## Follow the Learning Loop
+
+The workspace shows a course-level learning loop so you always know the next useful action:
+
+1. Create a course.
+2. Upload materials.
+3. Wait for parsing to complete.
+4. Ask the first knowledge-base question.
+5. Generate review cards or practice questions.
+6. Complete one review by adjusting card mastery.
+7. Review weak areas from low-mastery cards and recent wrong notes.
+
+The loop updates as documents become searchable, chat sessions are created, and study cards are reviewed.
+
 ## Upload Materials
 
 1. Select a course.
@@ -77,6 +91,8 @@ Enter a topic in the mind map panel. DevMemory stores generated mind maps under 
 ## Track Progress
 
 The progress panel summarizes courses, tracked records, and average mastery. Updating card mastery refreshes progress.
+
+Use the learning loop and progress panel together: the loop tells you what to do next, while progress shows whether your review activity is producing mastery records.
 
 ## Delete Data
 

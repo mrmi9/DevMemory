@@ -30,7 +30,7 @@ describe('ChatPanel', () => {
     vi.mocked(api.listDocuments).mockResolvedValue([])
   })
 
-  it('opens a cited document preview when clicking a citation', async () => {
+  it('opens a cited document preview and shows readable quality notes', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     useStudyStore().selectedCourseId = 'course-1'
@@ -99,9 +99,10 @@ describe('ChatPanel', () => {
     expect(wrapper.text()).toContain('Full parsed preview for SNMP trap.')
     expect(wrapper.text()).toContain('检索置信度：high')
     expect(wrapper.text()).toContain('引用资料较充分')
+    expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 
-  it('searches, renames, and deletes chat sessions', async () => {
+  it('searches, renames, and deletes chat sessions with readable Chinese controls', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     useStudyStore().selectedCourseId = 'course-1'
@@ -194,6 +195,7 @@ describe('ChatPanel', () => {
 
     expect(api.ask).toHaveBeenCalledWith('帮我总结 SNMP 协议考试重点', 'course-1', '', ['document-1'])
   })
+
   it('explains the next step when a course has no searchable documents', async () => {
     const pinia = createPinia()
     setActivePinia(pinia)
@@ -211,5 +213,6 @@ describe('ChatPanel', () => {
     expect(wrapper.text()).toContain('还没有可检索资料')
     expect(wrapper.text()).toContain('先在课程资料库上传并等待解析完成')
     expect(wrapper.find('[data-testid="ask-button"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
   })
 })

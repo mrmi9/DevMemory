@@ -25,7 +25,7 @@ const aiModeDetail = computed(() => {
 onMounted(async () => {
   try {
     systemStatus.value = await api.systemStatus()
-  } catch (error) {
+  } catch {
     systemStatus.value = null
   }
 })

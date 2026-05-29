@@ -30,7 +30,7 @@ const helperMessage = computed(() => {
   if (message.value) return message.value
   if (!store.selectedCourseId) return '请先登录并选择课程，再上传资料。'
   if (loading.value) return '正在读取资料列表...'
-  if (documents.value.length) return '选择资料可查看解析预览、chunks，或删除不再需要的文档。'
+  if (documents.value.length) return '选择资料可查看解析预览、chunks 和任务历史，也可以删除不再需要的文档。'
   return '上传后会自动解析、分块并写入向量库。'
 })
 
@@ -320,7 +320,7 @@ function jobStatusClass(job: DocumentJob) {
         <article v-for="job in jobs" :key="job.id" class="job-row">
           <div>
             <span class="status-pill" :class="jobStatusClass(job)">{{ job.status }}</span>
-            <small>{{ job.id }} 路 {{ job.job_type }} 路 {{ job.progress }}%</small>
+            <small>{{ job.id }} · {{ job.job_type }} · {{ job.progress }}%</small>
           </div>
           <p v-if="job.error_message" class="inline-error">{{ job.error_message }}</p>
         </article>

@@ -36,7 +36,7 @@ Out of scope for v1.0:
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and clean restore evidence gate exist | Preserve restore evidence during release tagging |
-| UX | Make workflows self-explanatory | First-run, no-document, and failed-ingestion states explain next steps | Add guided first-run checklist and learning workflow polish |
+| UX | Make workflows self-explanatory | Chinese UX copy restored and guided learning loop exists | Add document-library power-user controls |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, restore evidence, and release notes docs exist | Keep docs current while product features evolve |
 
@@ -161,15 +161,32 @@ Delivered scope:
 - Document restore evidence archival outside Git.
 - Update the v1.0 release notes with the restore evidence gate.
 
-### I-010 Guided First-Run Checklist and Learning Workflow Polish
+### I-010 Chinese UX Recovery and First-Run Workflow Polish
 
-Goal: improve the user-visible learning workflow now that v1.0 release operations are gated.
+Goal: restore trustworthy Chinese UI text and improve the user-visible learning workflow now that v1.0 release operations are gated.
+
+Status: completed.
+
+Record: [2026-05-29 I-010 Chinese UX Recovery and First-Run Workflow Polish](iterations/2026-05-29-i010-chinese-ux-workflow-polish.md)
+
+Delivered scope:
+
+- Recover readable UTF-8 Chinese copy in the main frontend workspace.
+- Add a guided learning loop for course creation, upload, parsing, first question, generated assets, review, and weakness review.
+- Add frontend tests that guard against common mojibake in high-traffic panels.
+- Update user-facing documentation.
+
+### I-011 Document Library Power User Mode
+
+Goal: make heavy document libraries manageable for users who upload many files.
 
 Default scope:
 
-- Add a guided first-run checklist for login, course creation, upload, parsing, Q&A, and generated study materials.
-- Make the learning workflow easier to resume after document parsing or generation failures.
-- Keep release documentation current only where product behavior changes.
+- Add document search.
+- Add status filters for parsing, failed, and searchable documents.
+- Add sorting by type, status, and upload time.
+- Add batch retry for failed documents.
+- Add duplicate file warning and lightweight tags or chapter grouping.
 
 ## Release Gate
 

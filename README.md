@@ -10,6 +10,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 - Background parsing, chunking, embedding, and pgvector storage.
 - Course-scoped Q&A with cited source chunks.
 - Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
+- Guided learning loop from course creation to upload, parsing, Q&A, generated assets, review, and weakness review.
 - Progress tracking for study cards and course review.
 - DeepSeek integration with offline placeholder mode when no API key is configured.
 - Retrieval confidence and quality notes for AI answers.
