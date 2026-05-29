@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { KeyRound, LogIn, LogOut } from 'lucide-vue-next'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { KeyRound, LogIn, LogOut, RefreshCw } from 'lucide-vue-next'
 import { api, type AIConfig, type SystemStatus } from '../api'
 import { useStudyStore } from '../stores/study'
 import AppModal from './AppModal.vue'
@@ -11,6 +11,8 @@ const password = ref('changeme')
 const message = ref('')
 const isLoggedIn = ref(api.hasToken())
 const systemStatus = ref<SystemStatus | null>(null)
+const statusLoading = ref(false)
+const statusError = ref('')
 const aiConfigOpen = ref(false)
 const aiConfig = ref<AIConfig | null>(null)
 const aiConfigBusy = ref(false)
@@ -18,26 +20,56 @@ const aiConfigError = ref('')
 const deepseekApiKey = ref('')
 const deepseekBaseUrl = ref('https://api.deepseek.com')
 const deepseekModel = ref('deepseek-chat')
+let statusRetryTimer: ReturnType<typeof setTimeout> | null = null
 
 const aiModeLabel = computed(() => {
+  if (statusLoading.value && !systemStatus.value) return '状态检查中'
+  if (statusError.value && !systemStatus.value) return '状态检查失败'
   if (!systemStatus.value) return '状态检查中'
   return systemStatus.value.ai_mode === 'online' ? '在线 AI 模式' : '离线占位 AI 模式'
 })
 
 const aiModeDetail = computed(() => {
+  if (statusError.value) return statusError.value
   if (!systemStatus.value) return ''
   if (systemStatus.value.ai_mode === 'online') return systemStatus.value.checks.deepseek?.model || 'DeepSeek 已配置'
   return 'DeepSeek 未配置'
 })
 
-onMounted(refreshSystemStatus)
+onMounted(() => refreshSystemStatus({ retries: 2 }))
 
-async function refreshSystemStatus() {
+onBeforeUnmount(() => {
+  clearStatusRetryTimer()
+})
+
+function clearStatusRetryTimer() {
+  if (statusRetryTimer) {
+    clearTimeout(statusRetryTimer)
+    statusRetryTimer = null
+  }
+}
+
+async function refreshSystemStatus(options: { retries?: number; clearRetry?: boolean } = {}) {
+  const retries = options.retries ?? 0
+  if (options.clearRetry ?? true) clearStatusRetryTimer()
+  statusLoading.value = true
   try {
     systemStatus.value = await api.systemStatus()
+    statusError.value = ''
   } catch {
-    systemStatus.value = null
+    statusError.value = '服务暂时不可用，请稍后重试'
+    if (retries > 0) {
+      statusRetryTimer = setTimeout(() => {
+        refreshSystemStatus({ retries: retries - 1, clearRetry: false })
+      }, 1000)
+    }
+  } finally {
+    statusLoading.value = false
   }
+}
+
+function retrySystemStatus() {
+  refreshSystemStatus()
 }
 
 async function login() {
@@ -108,10 +140,27 @@ async function saveAiConfig() {
       <LogOut :size="18" />
       <span>退出</span>
     </button>
-    <span class="mode-pill" :class="{ offline: systemStatus?.ai_mode === 'offline_placeholder' }">
+    <span
+      class="mode-pill"
+      :class="{
+        offline: systemStatus?.ai_mode === 'offline_placeholder',
+        error: Boolean(statusError)
+      }"
+    >
       {{ aiModeLabel }}
       <small v-if="aiModeDetail">{{ aiModeDetail }}</small>
     </span>
+    <button
+      v-if="statusError"
+      type="button"
+      title="重新检查 AI 状态"
+      data-testid="status-retry-button"
+      class="icon-button"
+      :disabled="statusLoading"
+      @click="retrySystemStatus"
+    >
+      <RefreshCw :size="16" />
+    </button>
     <button
       type="button"
       title="配置 DeepSeek API"

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api'
 import LoginBar from './LoginBar.vue'
@@ -19,6 +19,8 @@ vi.mock('../api', () => ({
 
 describe('LoginBar', () => {
   beforeEach(() => {
+    document.body.innerHTML = ''
+    vi.useRealTimers()
     vi.mocked(api.hasToken).mockReturnValue(false)
     vi.mocked(api.listCourses).mockResolvedValue([])
     vi.mocked(api.login).mockResolvedValue(undefined)
@@ -26,6 +28,10 @@ describe('LoginBar', () => {
     vi.mocked(api.getAiConfig).mockReset()
     vi.mocked(api.updateAiConfig).mockReset()
     vi.mocked(api.systemStatus).mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('shows offline AI mode when DeepSeek is not configured', async () => {
@@ -76,6 +82,87 @@ describe('LoginBar', () => {
 
     expect(api.logout).toHaveBeenCalledOnce()
     expect(wrapper.text()).toContain('已退出登录')
+    expect(wrapper.text()).toContain('在线 AI 模式')
+    expect(wrapper.text()).toContain('deepseek-v4-flash')
+  })
+
+  it('shows a failure state when the AI status check fails', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    vi.mocked(api.systemStatus).mockRejectedValue(new Error('服务暂时不可用，请稍后重试'))
+
+    const wrapper = mount(LoginBar, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('状态检查失败')
+    expect(wrapper.text()).toContain('服务暂时不可用，请稍后重试')
+    expect(wrapper.text()).not.toContain('状态检查中')
+  })
+
+  it('automatically retries failed AI status checks and recovers', async () => {
+    vi.useFakeTimers()
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    vi.mocked(api.systemStatus)
+      .mockRejectedValueOnce(new Error('temporary 502'))
+      .mockResolvedValueOnce({
+        status: 'ok',
+        environment: 'production',
+        ai_mode: 'online',
+        checks: {
+          deepseek: { configured: true, model: 'deepseek-v4-pro' }
+        }
+      })
+
+    const wrapper = mount(LoginBar, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('状态检查失败')
+
+    await vi.advanceTimersByTimeAsync(1200)
+    await flushPromises()
+
+    expect(api.systemStatus).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('在线 AI 模式')
+    expect(wrapper.text()).toContain('deepseek-v4-pro')
+  })
+
+  it('lets users manually retry the AI status check', async () => {
+    vi.useFakeTimers()
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    vi.mocked(api.systemStatus)
+      .mockRejectedValueOnce(new Error('temporary 502'))
+      .mockResolvedValueOnce({
+        status: 'ok',
+        environment: 'production',
+        ai_mode: 'online',
+        checks: {
+          deepseek: { configured: true, model: 'deepseek-v4-pro' }
+        }
+      })
+
+    const wrapper = mount(LoginBar, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="status-retry-button"]').trigger('click')
+    await flushPromises()
+
+    expect(api.systemStatus).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('在线 AI 模式')
+    expect(wrapper.text()).toContain('deepseek-v4-pro')
   })
 
   it('lets signed-in users configure DeepSeek from the page', async () => {

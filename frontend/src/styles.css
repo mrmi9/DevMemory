@@ -193,6 +193,12 @@ input[type="checkbox"] {
   color: #9a3412;
 }
 
+.mode-pill.error {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
 .mode-pill small {
   color: inherit;
   font-weight: 500;
