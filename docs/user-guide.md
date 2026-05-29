@@ -129,4 +129,6 @@ Use the learning loop and progress panel together: the loop tells you what to do
 
 ## Delete Data
 
-Course, document, chat, card, question, wrong-note, and mind-map deletion controls are destructive. Confirm prompts should be read carefully. Deleting a course also deletes its documents and learning records.
+Course, document, chat, card, question, wrong-note, and mind-map deletion controls are destructive. DevMemory shows an in-app confirmation modal before these actions, with the affected item and the impact of deletion. Deleting a course also deletes its documents and learning records.
+
+Editing chat session titles, review cards, and generated questions also happens in app modals so changes can be reviewed before saving.

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api'
 import { useStudyStore } from '../stores/study'
@@ -24,6 +24,11 @@ vi.mock('../api', () => ({
 }))
 
 describe('StudyToolsPanel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
+
   beforeEach(() => {
     vi.mocked(api.listStudyCards).mockReset()
     vi.mocked(api.listGeneratedQuestions).mockReset()
@@ -34,7 +39,6 @@ describe('StudyToolsPanel', () => {
     vi.mocked(api.deleteGeneratedQuestion).mockReset()
     vi.mocked(api.deleteStudyCard).mockReset()
     vi.mocked(api.deleteWrongNote).mockReset()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('notifies progress listeners after card mastery changes', async () => {
@@ -86,6 +90,9 @@ describe('StudyToolsPanel', () => {
     const store = useStudyStore()
     store.selectedCourseId = 'course-1'
     const markProgressChanged = vi.spyOn(store, 'markProgressChanged')
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('window.confirm should not be used')
+    })
     vi.mocked(api.listStudyCards).mockResolvedValue([
       {
         id: 'card-1',
@@ -133,8 +140,21 @@ describe('StudyToolsPanel', () => {
     await flushPromises()
 
     await wrapper.find('[title="删除卡片"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('删除复习卡片')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
+
     await wrapper.find('[title="删除试题"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('删除练习题')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
+
     await wrapper.find('[title="删除错题"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('删除错题记录')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
     await flushPromises()
 
     expect(api.deleteStudyCard).toHaveBeenCalledWith('card-1')
@@ -144,6 +164,7 @@ describe('StudyToolsPanel', () => {
     expect(wrapper.text()).not.toContain('Explain SNMP trap.')
     expect(wrapper.text()).not.toContain('SNMP mistake')
     expect(markProgressChanged).toHaveBeenCalledTimes(1)
+    expect(confirmSpy).not.toHaveBeenCalled()
   })
 
   it('edits a study card front and back in place', async () => {
@@ -151,9 +172,9 @@ describe('StudyToolsPanel', () => {
     setActivePinia(pinia)
     const store = useStudyStore()
     store.selectedCourseId = 'course-1'
-    vi.spyOn(window, 'prompt')
-      .mockReturnValueOnce('What is an SNMP trap?')
-      .mockReturnValueOnce('An event notification sent by a device.')
+    const promptSpy = vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('window.prompt should not be used')
+    })
     vi.mocked(api.listStudyCards).mockResolvedValue([
       {
         id: 'card-1',
@@ -186,6 +207,12 @@ describe('StudyToolsPanel', () => {
 
     await wrapper.find('[title="编辑卡片"]').trigger('click')
     await flushPromises()
+    ;(document.body.querySelector('[data-testid="card-front-input"]') as HTMLTextAreaElement).value = 'What is an SNMP trap?'
+    ;(document.body.querySelector('[data-testid="card-front-input"]') as HTMLTextAreaElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="card-back-input"]') as HTMLTextAreaElement).value = 'An event notification sent by a device.'
+    ;(document.body.querySelector('[data-testid="card-back-input"]') as HTMLTextAreaElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
 
     expect(api.updateStudyCard).toHaveBeenCalledWith('card-1', {
       front: 'What is an SNMP trap?',
@@ -193,6 +220,7 @@ describe('StudyToolsPanel', () => {
     })
     expect(wrapper.text()).toContain('What is an SNMP trap?')
     expect(wrapper.text()).toContain('An event notification sent by a device.')
+    expect(promptSpy).not.toHaveBeenCalled()
   })
 
   it('edits a generated question in place', async () => {
@@ -200,10 +228,9 @@ describe('StudyToolsPanel', () => {
     setActivePinia(pinia)
     const store = useStudyStore()
     store.selectedCourseId = 'course-1'
-    vi.spyOn(window, 'prompt')
-      .mockReturnValueOnce('Explain an SNMP trap.')
-      .mockReturnValueOnce('It is an event notification sent by a managed device.')
-      .mockReturnValueOnce('Trap messages are device initiated.')
+    const promptSpy = vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('window.prompt should not be used')
+    })
     vi.mocked(api.listStudyCards).mockResolvedValue([])
     vi.mocked(api.listGeneratedQuestions).mockResolvedValue([
       {
@@ -236,6 +263,14 @@ describe('StudyToolsPanel', () => {
 
     await wrapper.find('[title="编辑试题"]').trigger('click')
     await flushPromises()
+    ;(document.body.querySelector('[data-testid="question-prompt-input"]') as HTMLTextAreaElement).value = 'Explain an SNMP trap.'
+    ;(document.body.querySelector('[data-testid="question-prompt-input"]') as HTMLTextAreaElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="question-answer-input"]') as HTMLTextAreaElement).value = 'It is an event notification sent by a managed device.'
+    ;(document.body.querySelector('[data-testid="question-answer-input"]') as HTMLTextAreaElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="question-explanation-input"]') as HTMLTextAreaElement).value = 'Trap messages are device initiated.'
+    ;(document.body.querySelector('[data-testid="question-explanation-input"]') as HTMLTextAreaElement).dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
 
     expect(api.updateGeneratedQuestion).toHaveBeenCalledWith('question-1', {
       prompt: 'Explain an SNMP trap.',
@@ -245,5 +280,6 @@ describe('StudyToolsPanel', () => {
     expect(wrapper.text()).toContain('Explain an SNMP trap.')
     expect(wrapper.text()).toContain('It is an event notification sent by a managed device.')
     expect(wrapper.text()).toContain('Trap messages are device initiated.')
+    expect(promptSpy).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api'
 import { useStudyStore } from '../stores/study'
@@ -22,6 +22,11 @@ vi.mock('../api', () => ({
 }))
 
 describe('ChatPanel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
+
   beforeEach(() => {
     vi.mocked(api.ask).mockReset()
     vi.mocked(api.addChatMessageToWrongNotes).mockReset()
@@ -112,8 +117,12 @@ describe('ChatPanel', () => {
     const pinia = createPinia()
     setActivePinia(pinia)
     useStudyStore().selectedCourseId = 'course-1'
-    vi.spyOn(window, 'prompt').mockReturnValue('期末复习')
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const promptSpy = vi.spyOn(window, 'prompt').mockImplementation(() => {
+      throw new Error('window.prompt should not be used')
+    })
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('window.confirm should not be used')
+    })
     vi.mocked(api.listChatSessions).mockResolvedValue([
       {
         id: 'session-1',
@@ -150,15 +159,26 @@ describe('ChatPanel', () => {
 
     await wrapper.find('[title="重命名会话"]').trigger('click')
     await flushPromises()
+    const renameInput = document.body.querySelector('[data-testid="session-title-input"]') as HTMLInputElement
+    expect(document.body.textContent).toContain('重命名会话')
+    renameInput.value = '期末复习'
+    renameInput.dispatchEvent(new Event('input'))
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
 
     expect(api.updateChatSession).toHaveBeenCalledWith('session-1', '期末复习')
     expect(wrapper.text()).toContain('期末复习')
+    expect(promptSpy).not.toHaveBeenCalled()
 
     await wrapper.find('[title="删除会话"]').trigger('click')
+    await flushPromises()
+    expect(document.body.textContent).toContain('该会话历史也会被删除')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
     await flushPromises()
 
     expect(api.deleteChatSession).toHaveBeenCalledWith('session-1')
     expect(wrapper.text()).not.toContain('期末复习')
+    expect(confirmSpy).not.toHaveBeenCalled()
   })
 
   it('passes selected document filters when asking a question', async () => {

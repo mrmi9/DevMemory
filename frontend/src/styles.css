@@ -459,6 +459,61 @@ input[type="checkbox"] {
   margin: 4px 0 0;
 }
 
+.modal-backdrop {
+  align-items: center;
+  background: rgb(15 23 42 / 0.44);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 18px;
+  position: fixed;
+  z-index: 40;
+}
+
+.modal-dialog {
+  background: #ffffff;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  box-shadow: 0 24px 60px rgb(15 23 42 / 0.18);
+  display: grid;
+  gap: 14px;
+  max-height: min(720px, calc(100vh - 36px));
+  max-width: 560px;
+  overflow: auto;
+  padding: 18px;
+  width: min(100%, 560px);
+}
+
+.modal-header h3 {
+  font-size: 17px;
+  margin: 0;
+}
+
+.modal-body {
+  color: #475569;
+  display: grid;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.modal-body label {
+  color: #172033;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modal-body p {
+  margin: 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
 .empty-row {
   color: #697386;
   font-size: 13px;

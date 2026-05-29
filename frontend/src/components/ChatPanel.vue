@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ClipboardList, FileText, Layers, MessageSquare, NotebookPen, Pencil, RefreshCw, Send, Trash2 } from 'lucide-vue-next'
+import AppModal from './AppModal.vue'
 import { api, type ChatResponse, type ChatSession, type DocumentItem } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -27,6 +28,10 @@ const documents = ref<DocumentItem[]>([])
 const selectedDocumentIds = ref<Set<string>>(new Set())
 const citedDocument = ref<DocumentItem | null>(null)
 const citationPreview = ref('')
+const sessionPendingRename = ref<ChatSession | null>(null)
+const sessionRenameTitle = ref('')
+const sessionPendingDelete = ref<ChatSession | null>(null)
+const modalError = ref('')
 
 const filteredSessions = computed(() => {
   const keyword = sessionSearch.value.trim().toLowerCase()
@@ -121,34 +126,61 @@ function startNewSession() {
   citationPreview.value = ''
 }
 
-async function renameSession(session: ChatSession) {
-  const nextTitle = window.prompt('输入新的会话标题', session.title)?.trim()
-  if (!nextTitle || nextTitle === session.title) return
+function requestRenameSession(session: ChatSession) {
+  sessionPendingRename.value = session
+  sessionRenameTitle.value = session.title
+  modalError.value = ''
+}
+
+async function confirmRenameSession() {
+  if (!sessionPendingRename.value) return
+  const nextTitle = sessionRenameTitle.value.trim()
+  if (!nextTitle) {
+    modalError.value = '会话标题不能为空'
+    return
+  }
+  if (nextTitle === sessionPendingRename.value.title) {
+    sessionPendingRename.value = null
+    return
+  }
+  const session = sessionPendingRename.value
   sessionBusy.value = `rename:${session.id}`
   error.value = ''
+  modalError.value = ''
   try {
     const updated = await api.updateChatSession(session.id, nextTitle)
     sessions.value = sessions.value.map((item) => (item.id === updated.id ? updated : item))
     sessionSearch.value = ''
+    sessionPendingRename.value = null
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : String(caught)
+    modalError.value = caught instanceof Error ? caught.message : String(caught)
+    error.value = modalError.value
   } finally {
     sessionBusy.value = ''
   }
 }
 
-async function deleteSession(session: ChatSession) {
-  if (!window.confirm(`确定删除“${session.title}”吗？该会话历史也会被删除。`)) return
+function requestDeleteSession(session: ChatSession) {
+  sessionPendingDelete.value = session
+  modalError.value = ''
+}
+
+async function confirmDeleteSession() {
+  if (!sessionPendingDelete.value) return
+  const session = sessionPendingDelete.value
   sessionBusy.value = `delete:${session.id}`
   error.value = ''
+  modalError.value = ''
   try {
     await api.deleteChatSession(session.id)
     sessions.value = sessions.value.filter((item) => item.id !== session.id)
     if (sessionId.value === session.id) {
       startNewSession()
     }
+    sessionPendingDelete.value = null
   } catch (caught) {
-    error.value = caught instanceof Error ? caught.message : String(caught)
+    modalError.value = caught instanceof Error ? caught.message : String(caught)
+    error.value = modalError.value
   } finally {
     sessionBusy.value = ''
   }
@@ -284,7 +316,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
           type="button"
           title="重命名会话"
           :disabled="!!sessionBusy"
-          @click.stop="renameSession(session)"
+          @click.stop="requestRenameSession(session)"
         >
           <Pencil :size="14" />
         </button>
@@ -293,7 +325,7 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
           type="button"
           title="删除会话"
           :disabled="!!sessionBusy"
-          @click.stop="deleteSession(session)"
+          @click.stop="requestDeleteSession(session)"
         >
           <Trash2 :size="14" />
         </button>
@@ -406,5 +438,31 @@ async function openCitation(citation: ChatResponse['citations'][number]) {
       <strong>{{ emptyAnswerTitle }}</strong>
       <p>{{ emptyAnswerDetail }}</p>
     </article>
+    <AppModal
+      :open="!!sessionPendingRename"
+      title="重命名会话"
+      confirm-label="保存"
+      :busy="sessionBusy.startsWith('rename:')"
+      :error="modalError"
+      @close="sessionPendingRename = null"
+      @confirm="confirmRenameSession"
+    >
+      <label>
+        <span>会话标题</span>
+        <input v-model="sessionRenameTitle" data-testid="session-title-input" />
+      </label>
+    </AppModal>
+    <AppModal
+      :open="!!sessionPendingDelete"
+      title="删除会话"
+      confirm-label="删除会话"
+      danger
+      :busy="sessionBusy.startsWith('delete:')"
+      :error="modalError"
+      @close="sessionPendingDelete = null"
+      @confirm="confirmDeleteSession"
+    >
+      <p>确定删除“{{ sessionPendingDelete?.title }}”吗？该会话历史也会被删除。</p>
+    </AppModal>
   </section>
 </template>

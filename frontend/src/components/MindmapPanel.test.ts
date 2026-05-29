@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api'
 import { useStudyStore } from '../stores/study'
@@ -31,6 +31,11 @@ vi.mock('../api', () => ({
 }))
 
 describe('MindmapPanel bundle boundary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
+
   it('loads markmap libraries lazily instead of in the main bundle', () => {
     const source = readFileSync(resolve(process.cwd(), 'src/components/MindmapPanel.vue'), 'utf8')
 
@@ -41,7 +46,6 @@ describe('MindmapPanel bundle boundary', () => {
   beforeEach(() => {
     vi.mocked(api.listMindmaps).mockReset()
     vi.mocked(api.deleteMindmap).mockReset()
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
   })
 
   it('deletes the selected mindmap from the saved list', async () => {
@@ -49,6 +53,9 @@ describe('MindmapPanel bundle boundary', () => {
     setActivePinia(pinia)
     const store = useStudyStore()
     store.selectedCourseId = 'course-1'
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('window.confirm should not be used')
+    })
 
     vi.mocked(api.listMindmaps).mockResolvedValue([
       {
@@ -70,10 +77,14 @@ describe('MindmapPanel bundle boundary', () => {
 
     await wrapper.find('[title="删除思维导图"]').trigger('click')
     await flushPromises()
+    expect(document.body.textContent).toContain('删除思维导图')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
 
     expect(api.listMindmaps).toHaveBeenCalledWith('course-1')
     expect(api.deleteMindmap).toHaveBeenCalledWith('mindmap-1')
     expect(wrapper.text()).not.toContain('SNMP 导图')
     expect(wrapper.text()).not.toMatch(/璇|妫|鍒|鎬|�/)
+    expect(confirmSpy).not.toHaveBeenCalled()
   })
 })

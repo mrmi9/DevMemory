@@ -1,6 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '../api'
 import { useStudyStore } from '../stores/study'
@@ -19,6 +19,11 @@ vi.mock('../api', () => ({
 }))
 
 describe('UploadPanel', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
+
   beforeEach(() => {
     vi.mocked(api.listDocuments).mockReset()
     vi.mocked(api.listDocumentChunks).mockReset()
@@ -96,7 +101,9 @@ describe('UploadPanel', () => {
     setActivePinia(pinia)
     const store = useStudyStore()
     store.selectedCourseId = 'course-1'
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const confirmSpy = vi.spyOn(window, 'confirm').mockImplementation(() => {
+      throw new Error('window.confirm should not be used')
+    })
     vi.mocked(api.listDocuments).mockResolvedValue([
       {
         id: 'document-1',
@@ -142,11 +149,15 @@ describe('UploadPanel', () => {
     await wrapper.findAll('[data-testid="document-select"]')[1].setValue(true)
     await wrapper.find('[title="批量删除资料"]').trigger('click')
     await flushPromises()
+    expect(document.body.textContent).toContain('删除选中的 2 份资料')
+    ;(document.body.querySelector('[data-testid="modal-confirm"]') as HTMLButtonElement).click()
+    await flushPromises()
 
     expect(api.deleteDocument).toHaveBeenCalledWith('document-1')
     expect(api.deleteDocument).toHaveBeenCalledWith('document-2')
     expect(wrapper.text()).not.toContain('network.pdf')
     expect(wrapper.text()).not.toContain('routing.md')
+    expect(confirmSpy).not.toHaveBeenCalled()
   })
 
   it('shows troubleshooting guidance for failed parsing jobs in readable Chinese', async () => {

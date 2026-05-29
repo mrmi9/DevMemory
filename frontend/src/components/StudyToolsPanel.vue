@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
 import { Brain, ClipboardList, Layers, NotebookPen, Pencil, RefreshCw, Trash2 } from 'lucide-vue-next'
+import AppModal from './AppModal.vue'
 import { api, type GeneratedQuestion, type StudyCard, type WrongNote } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -15,6 +16,20 @@ const error = ref('')
 const studyCards = ref<StudyCard[]>([])
 const generatedQuestions = ref<GeneratedQuestion[]>([])
 const wrongNotes = ref<WrongNote[]>([])
+const cardPendingEdit = ref<StudyCard | null>(null)
+const cardEditFront = ref('')
+const cardEditBack = ref('')
+const questionPendingEdit = ref<GeneratedQuestion | null>(null)
+const questionEditPrompt = ref('')
+const questionEditAnswer = ref('')
+const questionEditExplanation = ref('')
+const deleteTarget = ref<
+  | { kind: 'card'; id: string; title: string }
+  | { kind: 'question'; id: string; title: string }
+  | { kind: 'wrong'; id: string; title: string }
+  | null
+>(null)
+const modalError = ref('')
 
 onMounted(loadStudyAssets)
 watch(() => store.selectedCourseId, loadStudyAssets)
@@ -103,33 +118,66 @@ async function updateCardMastery(card: StudyCard, mastery: number) {
   }
 }
 
-async function editStudyCard(card: StudyCard) {
-  const nextFront = window.prompt('编辑卡片正面', card.front)?.trim()
-  if (!nextFront) return
-  const nextBack = window.prompt('编辑卡片背面', card.back)?.trim()
-  if (!nextBack) return
+function editStudyCard(card: StudyCard) {
+  cardPendingEdit.value = card
+  cardEditFront.value = card.front
+  cardEditBack.value = card.back
+  modalError.value = ''
+}
+
+async function confirmEditStudyCard() {
+  if (!cardPendingEdit.value) return
+  const nextFront = cardEditFront.value.trim()
+  const nextBack = cardEditBack.value.trim()
+  if (!nextFront || !nextBack) {
+    modalError.value = '卡片正面和背面不能为空'
+    return
+  }
+  const card = cardPendingEdit.value
   busy.value = `card-edit:${card.id}`
   error.value = ''
+  modalError.value = ''
   try {
     const updated = await api.updateStudyCard(card.id, { front: nextFront, back: nextBack })
     studyCards.value = studyCards.value.map((item) => (item.id === updated.id ? updated : item))
+    cardPendingEdit.value = null
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    modalError.value = err instanceof Error ? err.message : String(err)
+    error.value = modalError.value
   } finally {
     busy.value = ''
   }
 }
 
-async function deleteStudyCard(card: StudyCard) {
-  if (!window.confirm(`确定删除“${card.front}”吗？`)) return
-  busy.value = `card-delete:${card.id}`
+function deleteStudyCard(card: StudyCard) {
+  deleteTarget.value = { kind: 'card', id: card.id, title: card.front }
+  modalError.value = ''
+}
+
+async function confirmDeleteTarget() {
+  if (!deleteTarget.value) return
+  const target = deleteTarget.value
+  if (target.kind === 'card') {
+    await confirmDeleteStudyCard(target.id)
+  } else if (target.kind === 'question') {
+    await confirmDeleteGeneratedQuestion(target.id)
+  } else {
+    await confirmDeleteWrongNote(target.id)
+  }
+}
+
+async function confirmDeleteStudyCard(cardId: string) {
+  busy.value = `card-delete:${cardId}`
   error.value = ''
+  modalError.value = ''
   try {
-    await api.deleteStudyCard(card.id)
-    studyCards.value = studyCards.value.filter((item) => item.id !== card.id)
+    await api.deleteStudyCard(cardId)
+    studyCards.value = studyCards.value.filter((item) => item.id !== cardId)
+    deleteTarget.value = null
     store.markProgressChanged()
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    modalError.value = err instanceof Error ? err.message : String(err)
+    error.value = modalError.value
   } finally {
     busy.value = ''
   }
@@ -150,14 +198,27 @@ async function addQuestionToWrongNotes(question: GeneratedQuestion) {
   }
 }
 
-async function editGeneratedQuestion(question: GeneratedQuestion) {
-  const nextPrompt = window.prompt('编辑试题题干', question.prompt)?.trim()
-  if (!nextPrompt) return
-  const nextAnswer = window.prompt('编辑参考答案', question.answer)?.trim()
-  if (!nextAnswer) return
-  const nextExplanation = window.prompt('编辑解析', question.explanation)?.trim() ?? ''
+function editGeneratedQuestion(question: GeneratedQuestion) {
+  questionPendingEdit.value = question
+  questionEditPrompt.value = question.prompt
+  questionEditAnswer.value = question.answer
+  questionEditExplanation.value = question.explanation
+  modalError.value = ''
+}
+
+async function confirmEditGeneratedQuestion() {
+  if (!questionPendingEdit.value) return
+  const nextPrompt = questionEditPrompt.value.trim()
+  const nextAnswer = questionEditAnswer.value.trim()
+  const nextExplanation = questionEditExplanation.value.trim()
+  if (!nextPrompt || !nextAnswer) {
+    modalError.value = '试题题干和参考答案不能为空'
+    return
+  }
+  const question = questionPendingEdit.value
   busy.value = `question-edit:${question.id}`
   error.value = ''
+  modalError.value = ''
   try {
     const updated = await api.updateGeneratedQuestion(question.id, {
       prompt: nextPrompt,
@@ -165,22 +226,31 @@ async function editGeneratedQuestion(question: GeneratedQuestion) {
       explanation: nextExplanation
     })
     generatedQuestions.value = generatedQuestions.value.map((item) => (item.id === updated.id ? updated : item))
+    questionPendingEdit.value = null
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    modalError.value = err instanceof Error ? err.message : String(err)
+    error.value = modalError.value
   } finally {
     busy.value = ''
   }
 }
 
-async function deleteGeneratedQuestion(question: GeneratedQuestion) {
-  if (!window.confirm(`确定删除“${question.prompt}”吗？`)) return
-  busy.value = `question-delete:${question.id}`
+function deleteGeneratedQuestion(question: GeneratedQuestion) {
+  deleteTarget.value = { kind: 'question', id: question.id, title: question.prompt }
+  modalError.value = ''
+}
+
+async function confirmDeleteGeneratedQuestion(questionId: string) {
+  busy.value = `question-delete:${questionId}`
   error.value = ''
+  modalError.value = ''
   try {
-    await api.deleteGeneratedQuestion(question.id)
-    generatedQuestions.value = generatedQuestions.value.filter((item) => item.id !== question.id)
+    await api.deleteGeneratedQuestion(questionId)
+    generatedQuestions.value = generatedQuestions.value.filter((item) => item.id !== questionId)
+    deleteTarget.value = null
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    modalError.value = err instanceof Error ? err.message : String(err)
+    error.value = modalError.value
   } finally {
     busy.value = ''
   }
@@ -198,15 +268,22 @@ async function loadWrongNotes() {
   }
 }
 
-async function deleteWrongNote(note: WrongNote) {
-  if (!window.confirm(`确定删除“${note.title}”吗？`)) return
-  busy.value = `wrong-delete:${note.id}`
+function deleteWrongNote(note: WrongNote) {
+  deleteTarget.value = { kind: 'wrong', id: note.id, title: note.title }
+  modalError.value = ''
+}
+
+async function confirmDeleteWrongNote(noteId: string) {
+  busy.value = `wrong-delete:${noteId}`
   error.value = ''
+  modalError.value = ''
   try {
-    await api.deleteWrongNote(note.id)
-    wrongNotes.value = wrongNotes.value.filter((item) => item.id !== note.id)
+    await api.deleteWrongNote(noteId)
+    wrongNotes.value = wrongNotes.value.filter((item) => item.id !== noteId)
+    deleteTarget.value = null
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    modalError.value = err instanceof Error ? err.message : String(err)
+    error.value = modalError.value
   } finally {
     busy.value = ''
   }
@@ -341,5 +418,57 @@ async function deleteWrongNote(note: WrongNote) {
       </article>
       <p v-if="!wrongNotes.length" class="muted">当前课程还没有错题记录。</p>
     </section>
+    <AppModal
+      :open="!!cardPendingEdit"
+      title="编辑复习卡片"
+      confirm-label="保存卡片"
+      :busy="busy.startsWith('card-edit:')"
+      :error="modalError"
+      @close="cardPendingEdit = null"
+      @confirm="confirmEditStudyCard"
+    >
+      <label>
+        <span>卡片正面</span>
+        <textarea v-model="cardEditFront" data-testid="card-front-input" rows="3"></textarea>
+      </label>
+      <label>
+        <span>卡片背面</span>
+        <textarea v-model="cardEditBack" data-testid="card-back-input" rows="4"></textarea>
+      </label>
+    </AppModal>
+    <AppModal
+      :open="!!questionPendingEdit"
+      title="编辑练习题"
+      confirm-label="保存试题"
+      :busy="busy.startsWith('question-edit:')"
+      :error="modalError"
+      @close="questionPendingEdit = null"
+      @confirm="confirmEditGeneratedQuestion"
+    >
+      <label>
+        <span>题干</span>
+        <textarea v-model="questionEditPrompt" data-testid="question-prompt-input" rows="3"></textarea>
+      </label>
+      <label>
+        <span>参考答案</span>
+        <textarea v-model="questionEditAnswer" data-testid="question-answer-input" rows="4"></textarea>
+      </label>
+      <label>
+        <span>解析</span>
+        <textarea v-model="questionEditExplanation" data-testid="question-explanation-input" rows="3"></textarea>
+      </label>
+    </AppModal>
+    <AppModal
+      :open="!!deleteTarget"
+      :title="deleteTarget?.kind === 'card' ? '删除复习卡片' : deleteTarget?.kind === 'question' ? '删除练习题' : '删除错题记录'"
+      :confirm-label="deleteTarget?.kind === 'card' ? '删除卡片' : deleteTarget?.kind === 'question' ? '删除试题' : '删除错题'"
+      danger
+      :busy="busy.includes('-delete:')"
+      :error="modalError"
+      @close="deleteTarget = null"
+      @confirm="confirmDeleteTarget"
+    >
+      <p>确定删除“{{ deleteTarget?.title }}”吗？该操作无法撤销。</p>
+    </AppModal>
   </section>
 </template>

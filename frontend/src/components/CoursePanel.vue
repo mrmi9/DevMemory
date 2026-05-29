@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { BookOpen, Plus, Trash2 } from 'lucide-vue-next'
+import AppModal from './AppModal.vue'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
@@ -8,6 +9,8 @@ const title = ref('计算机网络')
 const description = ref('课程资料、协议重点与错题整理')
 const message = ref('')
 const deletingCourseId = ref('')
+const coursePendingDelete = ref<{ id: string; title: string } | null>(null)
+const courseDeleteError = ref('')
 
 async function createCourse() {
   if (!title.value.trim()) return
@@ -16,16 +19,24 @@ async function createCourse() {
   description.value = ''
 }
 
-async function deleteCourse(courseId: string, courseTitle: string) {
-  const confirmed = window.confirm(`确定删除“${courseTitle}”吗？该课程下的资料和学习记录也会被删除。`)
-  if (!confirmed) return
-  deletingCourseId.value = courseId
+function requestDeleteCourse(courseId: string, courseTitle: string) {
+  coursePendingDelete.value = { id: courseId, title: courseTitle }
   message.value = ''
+  courseDeleteError.value = ''
+}
+
+async function confirmDeleteCourse() {
+  if (!coursePendingDelete.value) return
+  deletingCourseId.value = coursePendingDelete.value.id
+  message.value = ''
+  courseDeleteError.value = ''
   try {
-    await store.deleteCourse(courseId)
+    await store.deleteCourse(coursePendingDelete.value.id)
     message.value = '课程已删除'
+    coursePendingDelete.value = null
   } catch (error) {
-    message.value = error instanceof Error ? error.message : String(error)
+    courseDeleteError.value = error instanceof Error ? error.message : String(error)
+    message.value = courseDeleteError.value
   } finally {
     deletingCourseId.value = ''
   }
@@ -62,7 +73,7 @@ async function deleteCourse(courseId: string, courseTitle: string) {
           type="button"
           title="删除课程"
           :disabled="!!deletingCourseId"
-          @click.stop="deleteCourse(course.id, course.title)"
+          @click.stop="requestDeleteCourse(course.id, course.title)"
         >
           <Trash2 :size="16" />
           <span class="sr-only">删除课程</span>
@@ -82,5 +93,17 @@ async function deleteCourse(courseId: string, courseTitle: string) {
         <span>新建课程</span>
       </button>
     </form>
+    <AppModal
+      :open="!!coursePendingDelete"
+      title="删除课程"
+      confirm-label="删除课程"
+      danger
+      :busy="!!deletingCourseId"
+      :error="courseDeleteError"
+      @close="coursePendingDelete = null"
+      @confirm="confirmDeleteCourse"
+    >
+      <p>确定删除“{{ coursePendingDelete?.title }}”吗？该课程下的资料和学习记录也会被删除。</p>
+    </AppModal>
   </section>
 </template>

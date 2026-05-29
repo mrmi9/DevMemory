@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { Network, RefreshCw, Trash2 } from 'lucide-vue-next'
+import AppModal from './AppModal.vue'
 import { api, type Mindmap } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -12,6 +13,7 @@ const selectedMindmapId = ref('')
 const busy = ref('')
 const error = ref('')
 const svg = ref<SVGSVGElement | null>(null)
+const mindmapPendingDelete = ref<Mindmap | null>(null)
 type MarkmapInstance = { setData: (root: unknown) => void; fit: () => void }
 
 let transformer: { transform: (content: string) => { root: unknown } } | null = null
@@ -94,10 +96,16 @@ async function generate() {
   }
 }
 
-async function deleteSelectedMindmap() {
+function deleteSelectedMindmap() {
   const selected = mindmaps.value.find((item) => item.id === selectedMindmapId.value)
   if (!selected) return
-  if (!window.confirm(`确定删除“${selected.title}”吗？`)) return
+  mindmapPendingDelete.value = selected
+  error.value = ''
+}
+
+async function confirmDeleteSelectedMindmap() {
+  if (!mindmapPendingDelete.value) return
+  const selected = mindmapPendingDelete.value
   busy.value = 'delete'
   error.value = ''
   try {
@@ -105,6 +113,7 @@ async function deleteSelectedMindmap() {
     mindmaps.value = mindmaps.value.filter((item) => item.id !== selected.id)
     selectedMindmapId.value = mindmaps.value[0]?.id ?? ''
     syncSelectedMindmap()
+    mindmapPendingDelete.value = null
     await nextTick()
     await render()
   } catch (err) {
@@ -165,5 +174,17 @@ watch(() => store.selectedCourseId, loadMindmaps)
 
     <p v-if="error" class="inline-error">{{ error }}</p>
     <svg ref="svg" class="mindmap-canvas"></svg>
+    <AppModal
+      :open="!!mindmapPendingDelete"
+      title="删除思维导图"
+      confirm-label="删除导图"
+      danger
+      :busy="busy === 'delete'"
+      :error="error"
+      @close="mindmapPendingDelete = null"
+      @confirm="confirmDeleteSelectedMindmap"
+    >
+      <p>确定删除“{{ mindmapPendingDelete?.title }}”吗？该操作无法撤销。</p>
+    </AppModal>
   </section>
 </template>

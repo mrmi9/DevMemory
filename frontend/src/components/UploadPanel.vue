@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileText, FileUp, Filter, RefreshCw, RotateCcw, Save, Search, Tag, Trash2 } from 'lucide-vue-next'
+import AppModal from './AppModal.vue'
 import { api, type DocumentChunk, type DocumentItem, type DocumentJob } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -21,6 +22,8 @@ const detailLoading = ref(false)
 const deleting = ref(false)
 const retryingFailed = ref(false)
 const metadataSaving = ref(false)
+const documentsPendingDelete = ref<DocumentItem[]>([])
+const deleteError = ref('')
 let refreshTimer: ReturnType<typeof setInterval> | undefined
 
 const hasProcessingDocuments = computed(() =>
@@ -47,6 +50,9 @@ const selectedDocumentFailed = computed(() =>
 )
 const selectedDocumentFailureReason = computed(() =>
   selectedDocument.value?.latest_job?.error_message || selectedDocument.value?.error_message || 'Worker 未返回具体失败原因'
+)
+const deleteModalTitle = computed(() =>
+  documentsPendingDelete.value.length > 1 ? `删除选中的 ${documentsPendingDelete.value.length} 份资料` : '删除资料'
 )
 const helperMessage = computed(() => {
   if (message.value) return message.value
@@ -178,12 +184,18 @@ async function saveDocumentMetadata() {
   }
 }
 
-async function deleteSelectedDocuments() {
+function deleteSelectedDocuments() {
   const targets = selectedDocuments.value
   if (!targets.length) return
-  const confirmed = window.confirm(`确定删除选中的 ${targets.length} 份资料吗？删除后会从知识库检索中移除。`)
-  if (!confirmed) return
+  documentsPendingDelete.value = targets
+  deleteError.value = ''
+}
+
+async function confirmDeleteDocuments() {
+  const targets = documentsPendingDelete.value
+  if (!targets.length) return
   deleting.value = true
+  deleteError.value = ''
   message.value = `正在删除 ${targets.length} 份资料...`
   try {
     await Promise.all(targets.map((document) => api.deleteDocument(document.id)))
@@ -196,8 +208,10 @@ async function deleteSelectedDocuments() {
       jobs.value = []
     }
     message.value = `已删除 ${targets.length} 份资料`
+    documentsPendingDelete.value = []
   } catch (error) {
-    message.value = error instanceof Error ? error.message : String(error)
+    deleteError.value = error instanceof Error ? error.message : String(error)
+    message.value = deleteError.value
   } finally {
     deleting.value = false
   }
@@ -249,26 +263,10 @@ async function retryFailedDocuments() {
   }
 }
 
-async function deleteSelectedDocument() {
+function deleteSelectedDocument() {
   if (!selectedDocument.value) return
-  const document = selectedDocument.value
-  const confirmed = window.confirm(`确定删除“${document.title}”吗？删除后会从知识库检索中移除。`)
-  if (!confirmed) return
-  deleting.value = true
-  message.value = '正在删除资料...'
-  try {
-    await api.deleteDocument(document.id)
-    documents.value = documents.value.filter((item) => item.id !== document.id)
-    selectedDocumentIds.value = new Set([...selectedDocumentIds.value].filter((id) => id !== document.id))
-    selectedDocument.value = null
-    chunks.value = []
-    jobs.value = []
-    message.value = '资料已删除'
-  } catch (error) {
-    message.value = error instanceof Error ? error.message : String(error)
-  } finally {
-    deleting.value = false
-  }
+  documentsPendingDelete.value = [selectedDocument.value]
+  deleteError.value = ''
 }
 
 async function upload(event: Event) {
@@ -517,5 +515,20 @@ function jobStatusClass(job: DocumentJob) {
         <p v-if="!jobs.length && !detailLoading" class="muted">暂无任务历史</p>
       </div>
     </aside>
+    <AppModal
+      :open="!!documentsPendingDelete.length"
+      :title="deleteModalTitle"
+      confirm-label="删除资料"
+      danger
+      :busy="deleting"
+      :error="deleteError"
+      @close="documentsPendingDelete = []"
+      @confirm="confirmDeleteDocuments"
+    >
+      <p v-if="documentsPendingDelete.length > 1">
+        确定删除选中的 {{ documentsPendingDelete.length }} 份资料吗？删除后会从知识库检索中移除。
+      </p>
+      <p v-else>确定删除“{{ documentsPendingDelete[0]?.title }}”吗？删除后会从知识库检索中移除。</p>
+    </AppModal>
   </section>
 </template>
