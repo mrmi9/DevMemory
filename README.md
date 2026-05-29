@@ -178,6 +178,8 @@ DevMemory is iterated toward a professional private-deployment release through e
 
 Back up both PostgreSQL and uploaded files. See [docs/backup-restore.md](docs/backup-restore.md).
 
+Moving DevMemory to another computer is covered in [docs/migration-guide.md](docs/migration-guide.md), including fresh install, full data migration, restore verification, and common failures.
+
 ## User Guide
 
 End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
