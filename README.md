@@ -125,6 +125,14 @@ python scripts\smoke_test.py
 
 Release checks are listed in [docs/release-checklist.md](docs/release-checklist.md).
 
+## Professional Release Iterations
+
+DevMemory is iterated toward a professional private-deployment release through explicit release iterations. Each iteration records its goal, optimization direction, scope, documentation updates, and acceptance gates.
+
+- Roadmap: [docs/professional-release-roadmap.md](docs/professional-release-roadmap.md)
+- Iteration template: [docs/iteration-template.md](docs/iteration-template.md)
+- Iteration records: [docs/iterations](docs/iterations)
+
 ## Backup and Restore
 
 Back up both PostgreSQL and uploaded files. See [docs/backup-restore.md](docs/backup-restore.md).

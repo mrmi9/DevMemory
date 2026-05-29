@@ -12,6 +12,13 @@ Use this checklist before tagging or distributing a private deployment release.
 - `STUDY_CORS_ORIGINS` does not contain `*`.
 - `STUDY_POSTGRES_PASSWORD` and `STUDY_DATABASE_URL` match.
 
+## Iteration Governance
+
+- The active iteration has a record under `docs/iterations/`.
+- The iteration record includes goal, optimization direction, scope, Markdown updates, acceptance gates, and follow-up.
+- Behavior, deployment, or operations changes update the relevant `.md` files.
+- [professional-release-roadmap.md](professional-release-roadmap.md) reflects completed and next iterations.
+
 ## Build and Tests
 
 ```powershell
