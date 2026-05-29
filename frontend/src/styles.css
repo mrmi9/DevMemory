@@ -978,6 +978,48 @@ pre {
   color: #697386;
 }
 
+.daily-review,
+.recent-wrong-notes {
+  display: grid;
+  gap: 10px;
+}
+
+.review-metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.review-metrics span,
+.review-card {
+  background: #f8fafc;
+  border: 1px solid #e3e7ef;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.review-metrics strong,
+.review-metrics small,
+.review-card small {
+  display: block;
+}
+
+.review-metrics small,
+.review-card small {
+  color: #697386;
+}
+
+.review-card {
+  display: grid;
+  gap: 10px;
+}
+
+.review-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 @media (max-width: 980px) {
   .workspace,
   .main-grid {
@@ -998,6 +1040,11 @@ pre {
   }
 
   .document-metadata-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .review-metrics,
+  .review-actions {
     grid-template-columns: 1fr;
   }
 

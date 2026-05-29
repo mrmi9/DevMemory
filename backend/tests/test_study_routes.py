@@ -13,6 +13,7 @@ from app.api.routes import (
     delete_mindmap,
     delete_study_card,
     delete_wrong_note,
+    progress_overview,
     update_generated_question,
     update_document_metadata,
     update_study_card_mastery,
@@ -20,6 +21,7 @@ from app.api.routes import (
 from app.models import (
     ChatMessage,
     ChatSession,
+    Course,
     Document,
     DocumentChunk,
     GeneratedQuestion,
@@ -542,3 +544,121 @@ def test_delete_study_card_hides_cards_owned_by_another_user():
     assert exc_info.value.status_code == 404
     assert db.deleted_row is None
     assert db.committed is False
+
+
+class ProgressOverviewQuery:
+    def __init__(self, rows):
+        self.rows = rows
+
+    def filter(self, *conditions):
+        return self
+
+    def order_by(self, *clauses):
+        return self
+
+    def limit(self, count):
+        self.rows = self.rows[:count]
+        return self
+
+    def all(self):
+        return self.rows
+
+
+class ProgressOverviewDb:
+    def __init__(self):
+        self.courses = [FakeCourse()]
+        self.records = [
+            type(
+                "FakeProgressRecord",
+                (),
+                {
+                    "id": "progress-1",
+                    "course_id": "course-1",
+                    "item_type": "study_card",
+                    "item_id": "card-2",
+                    "status": "in_progress",
+                    "mastery": 2,
+                },
+            )()
+        ]
+        self.cards = [
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-1",
+                    "course_id": "course-1",
+                    "front": "What is SNMP trap?",
+                    "back": "A device notification.",
+                    "source": "chat",
+                    "mastery": 0,
+                    "created_at": datetime(2026, 5, 29, 10, 0, 0),
+                },
+            )(),
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-2",
+                    "course_id": "course-1",
+                    "front": "What is MIB?",
+                    "back": "A management information base.",
+                    "source": "ai",
+                    "mastery": 2,
+                    "created_at": datetime(2026, 5, 29, 11, 0, 0),
+                },
+            )(),
+            type(
+                "FakeStudyCard",
+                (),
+                {
+                    "id": "card-3",
+                    "course_id": "course-1",
+                    "front": "Mastered card",
+                    "back": "Known.",
+                    "source": "ai",
+                    "mastery": 5,
+                    "created_at": datetime(2026, 5, 29, 12, 0, 0),
+                },
+            )(),
+        ]
+        self.wrong_notes = [
+            type(
+                "FakeWrongNote",
+                (),
+                {
+                    "id": "wrong-1",
+                    "course_id": "course-1",
+                    "title": "SNMP trap mistake",
+                    "original_question": "Trap timing?",
+                    "user_answer": "",
+                    "correct_answer": "Event driven.",
+                    "analysis": "Review trap triggers.",
+                    "tags": ["重点"],
+                    "created_at": datetime(2026, 5, 29, 13, 0, 0),
+                },
+            )()
+        ]
+
+    def query(self, model):
+        if model is Course:
+            return ProgressOverviewQuery(self.courses)
+        if model is ProgressRecord:
+            return ProgressOverviewQuery(self.records)
+        if model is StudyCard:
+            return ProgressOverviewQuery(self.cards)
+        if model is WrongNote:
+            return ProgressOverviewQuery(self.wrong_notes)
+        raise AssertionError(model)
+
+
+def test_progress_overview_includes_daily_review_queue():
+    payload = progress_overview(user=FakeUser(), db=ProgressOverviewDb())
+
+    assert payload["review"]["today_due"] == 2
+    assert payload["review"]["low_mastery"] == 2
+    assert payload["review"]["mastered"] == 1
+    assert payload["review"]["cards"][0]["id"] == "card-1"
+    assert payload["review"]["cards"][0]["review_state"] == "not_started"
+    assert payload["review"]["cards"][1]["review_state"] == "needs_reinforcement"
+    assert payload["review"]["recent_wrong_notes"][0]["title"] == "SNMP trap mistake"

@@ -109,7 +109,21 @@ Enter a topic in the mind map panel. DevMemory stores generated mind maps under 
 
 ## Track Progress
 
-The progress panel summarizes courses, tracked records, and average mastery. Updating card mastery refreshes progress.
+The progress panel summarizes courses, tracked records, and average mastery. It also shows a daily review queue:
+
+- Today’s due cards.
+- Low-mastery card count.
+- Mastered card count.
+- Recent wrong notes.
+
+Use the four review outcomes on each due card:
+
+- `忘记`: set mastery low and keep it in review.
+- `模糊`: mark partial recall.
+- `掌握`: mark the card as learned.
+- `简单`: mark the card as easy.
+
+Updating a review card refreshes progress and the learning loop.
 
 Use the learning loop and progress panel together: the loop tells you what to do next, while progress shows whether your review activity is producing mastery records.
 

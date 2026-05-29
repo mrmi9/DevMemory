@@ -614,6 +614,7 @@ def delete_mindmap(mindmap_id: str, user: User = Depends(get_current_user), db: 
 def progress_overview(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     courses = db.query(Course).filter(Course.user_id == user.id).all()
     records = db.query(ProgressRecord).filter(ProgressRecord.user_id == user.id).all()
+    review = _daily_review_queue(db, user.id)
     return {
         "courses": len(courses),
         "records": len(records),
@@ -629,6 +630,7 @@ def progress_overview(user: User = Depends(get_current_user), db: Session = Depe
             }
             for record in records
         ],
+        "review": review,
     }
 
 
@@ -778,6 +780,36 @@ def _status_for_mastery(mastery: int) -> str:
     if mastery > 0:
         return "in_progress"
     return "not_started"
+
+
+def _review_state_for_mastery(mastery: int) -> str:
+    if mastery <= 0:
+        return "not_started"
+    if mastery < 4:
+        return "needs_reinforcement"
+    return "mastered"
+
+
+def _daily_review_queue(db: Session, user_id: str) -> dict:
+    cards = db.query(StudyCard).filter(StudyCard.user_id == user_id).all()
+    wrong_notes = db.query(WrongNote).filter(WrongNote.user_id == user_id).order_by(WrongNote.created_at.desc()).limit(5).all()
+    due_cards = [card for card in cards if card.mastery < 4]
+    due_cards.sort(key=lambda card: (card.mastery, card.created_at))
+    mastered = sum(1 for card in cards if card.mastery >= 4)
+    return {
+        "today_due": len(due_cards),
+        "low_mastery": sum(1 for card in cards if card.mastery <= 2),
+        "mastered": mastered,
+        "cards": [_review_card_row(card) for card in due_cards[:8]],
+        "recent_wrong_notes": [serialize_wrong_note_row(note) for note in wrong_notes],
+    }
+
+
+def _review_card_row(card: StudyCard) -> dict:
+    payload = serialize_study_card_row(card)
+    payload["review_state"] = _review_state_for_mastery(card.mastery)
+    payload["next_review_label"] = "今天" if card.mastery < 4 else "已掌握"
+    return payload
 
 
 def _normalize_document_tags(tags: list[str]) -> list[str]:

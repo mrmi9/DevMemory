@@ -36,7 +36,7 @@ Out of scope for v1.0:
 | Observability | Make runtime state diagnosable | `/api/system/status` exists | Add worker heartbeat and clearer job metrics |
 | Security | Reduce private deployment risk | Token TTL, upload limits, rate limits, and logout exist | Add password-change flow and token revocation strategy |
 | Data Safety | Protect user documents and database | Backup/restore scripts and clean restore evidence gate exist | Preserve restore evidence during release tagging |
-| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, document-library power controls, and answer-to-study actions exist | Add daily review queue |
+| UX | Make workflows self-explanatory | Chinese UX copy, guided learning loop, document-library controls, answer-to-study actions, and daily review queue exist | Replace browser prompt/confirm with app modals |
 | AI Quality | Improve answer reliability | Retrieval confidence and quality fixtures exist | Add model-output evaluation reports |
 | Documentation | Keep release knowledge current | Deployment, user, backup, checklist, tagging, restore evidence, and release notes docs exist | Keep docs current while product features evolve |
 
@@ -215,12 +215,27 @@ Delivered scope:
 
 Goal: turn review from manual mastery editing into a daily task.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-013 Daily Review Queue](iterations/2026-05-29-i013-daily-review-queue.md)
+
+Delivered scope:
 
 - Show today’s due review cards.
 - Prioritize low-mastery cards and recent wrong notes.
 - Add due/overdue review status to the progress panel.
 - Record review actions without requiring users to hunt through all generated cards.
+
+### I-014 App Modal Interaction Cleanup
+
+Goal: replace browser-native prompt and confirm interactions with consistent in-app modals.
+
+Default scope:
+
+- Rename chat sessions in a modal.
+- Edit cards and generated questions in modals.
+- Confirm destructive deletes with impact-aware modal copy.
+- Keep loading and error states inside the modal.
 
 ## Release Gate
 

@@ -12,6 +12,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 - Course-scoped Q&A with cited source chunks.
 - Answer-to-study actions that save cited answers as review cards, practice questions, or focus notes.
 - Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
+- Daily review queue with due cards, low-mastery counts, recent wrong notes, and four review outcomes.
 - Guided learning loop from course creation to upload, parsing, Q&A, generated assets, review, and weakness review.
 - Progress tracking for study cards and course review.
 - DeepSeek integration with offline placeholder mode when no API key is configured.

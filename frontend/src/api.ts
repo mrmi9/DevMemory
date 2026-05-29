@@ -133,6 +133,25 @@ export interface SystemStatus {
   }
 }
 
+export interface ReviewCard extends StudyCard {
+  review_state: 'not_started' | 'needs_reinforcement' | 'mastered'
+  next_review_label: string
+}
+
+export interface ProgressOverview {
+  courses: number
+  records: number
+  average_mastery: number
+  items: unknown[]
+  review?: {
+    today_due: number
+    low_mastery: number
+    mastered: number
+    cards: ReviewCard[]
+    recent_wrong_notes: WrongNote[]
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 export class ApiClient {
@@ -323,7 +342,7 @@ export class ApiClient {
   }
 
   async progressOverview() {
-    return this.request<{ courses: number; records: number; average_mastery: number; items: unknown[] }>('/progress/overview')
+    return this.request<ProgressOverview>('/progress/overview')
   }
 
   async listChatSessions(courseId?: string) {
