@@ -22,6 +22,18 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 
 ## Private Deployment
 
+Quick start on this computer:
+
+```powershell
+.\Start-DevMemory.bat
+```
+
+This starts the private Docker Compose stack and opens `http://127.0.0.1:5173`. To stop it:
+
+```powershell
+.\Stop-DevMemory.bat
+```
+
 1. Copy the production environment template:
 
 ```powershell

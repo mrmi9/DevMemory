@@ -12,6 +12,27 @@ This guide describes the v1.0 private deployment path for a single machine or an
 
 ## Production Setup
 
+For daily use on Windows, the project root includes shortcut scripts:
+
+```powershell
+.\Start-DevMemory.bat
+```
+
+This starts the private Docker Compose stack, waits for the web entry to respond, and opens `http://127.0.0.1:5173`.
+
+To stop the stack:
+
+```powershell
+.\Stop-DevMemory.bat
+```
+
+You can also run the PowerShell scripts directly:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\start-devmemory.ps1
+powershell -ExecutionPolicy Bypass -File scripts\stop-devmemory.ps1
+```
+
 1. Copy the production environment template:
 
 ```powershell
