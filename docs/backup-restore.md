@@ -2,13 +2,33 @@
 
 Back up both PostgreSQL data and uploaded files. A database backup without the upload volume is incomplete because document records point to uploaded files.
 
-## Create a Backup Directory
+## Scripted Backup Directory
 
 ```powershell
 New-Item -ItemType Directory -Force backups
 ```
 
-## Back Up PostgreSQL
+## Scripted PostgreSQL Backup
+
+Recommended:
+
+```powershell
+python scripts\ops.py backup-db --output backups\devmemory-db.sql
+```
+
+Windows wrapper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\ops.ps1 backup-db --output backups\devmemory-db.sql
+```
+
+The helper uses the production compose file by default:
+
+```text
+docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres pg_dump -U study -d study
+```
+
+## Manual PostgreSQL Backup
 
 Development stack:
 
@@ -22,7 +42,21 @@ Production stack:
 docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres pg_dump -U study -d study > backups\devmemory-db.sql
 ```
 
-## Back Up Uploads
+## Scripted Upload Backup
+
+Recommended:
+
+```powershell
+python scripts\ops.py backup-uploads --output backups\devmemory-uploads.tgz
+```
+
+Windows wrapper:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\ops.ps1 backup-uploads --output backups\devmemory-uploads.tgz
+```
+
+## Manual Upload Backup
 
 For the default Compose project name, the upload volume is usually `devmemory_uploads`.
 
@@ -36,7 +70,17 @@ If the volume name is different, find it with:
 docker volume ls
 ```
 
-## Restore Database
+## Scripted Database Restore
+
+Restore is destructive and requires `--yes`:
+
+```powershell
+python scripts\ops.py restore-db --input backups\devmemory-db.sql --yes
+```
+
+Without `--yes`, the helper refuses to run.
+
+## Manual Database Restore
 
 Start PostgreSQL first, then restore:
 
@@ -45,7 +89,17 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d postg
 docker compose --env-file .env.production -f docker-compose.prod.yml exec -T postgres psql -U study -d study < backups\devmemory-db.sql
 ```
 
-## Restore Uploads
+## Scripted Upload Restore
+
+Restore is destructive because it clears the uploads volume before extracting the backup:
+
+```powershell
+python scripts\ops.py restore-uploads --input backups\devmemory-uploads.tgz --yes
+```
+
+Without `--yes`, the helper refuses to run.
+
+## Manual Upload Restore
 
 ```powershell
 docker run --rm -v devmemory_uploads:/data -v ${PWD}\backups:/backup busybox sh -c "rm -rf /data/* && tar xzf /backup/devmemory-uploads.tgz -C /data"

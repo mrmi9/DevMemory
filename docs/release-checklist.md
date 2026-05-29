@@ -80,8 +80,17 @@ The smoke test must complete login, temporary course creation, Markdown upload, 
 
 - Create a database backup.
 - Create an upload volume backup.
+- Run `python scripts\ops.py backup-db --output backups\devmemory-db.sql`.
+- Run `python scripts\ops.py backup-uploads --output backups\devmemory-uploads.tgz`.
+- Confirm restore commands require `--yes` before running destructive operations.
 - Restore to a clean environment at least once before the first v1.0 release.
 - Verify restored courses, documents, and question answering.
+
+## Upgrade and Rollback
+
+- Run `python scripts\ops.py upgrade --smoke` or document why smoke must run from another network context.
+- Confirm a previous known-good Git ref is available for rollback.
+- Run `python scripts\ops.py rollback --ref <previous-good-ref> --smoke` during release rehearsal when practical.
 
 ## GitHub
 

@@ -54,7 +54,7 @@ Record: [2026-05-29 I-001 Private Deployment Foundation](iterations/2026-05-29-i
 
 Goal: make every future release iteration explicit, reviewable, and tied to Markdown updates.
 
-Status: current.
+Status: completed.
 
 Record: [2026-05-29 I-002 Release Governance](iterations/2026-05-29-i002-release-governance.md)
 
@@ -62,7 +62,11 @@ Record: [2026-05-29 I-002 Release Governance](iterations/2026-05-29-i002-release
 
 Goal: turn backup, restore, upgrade, and rollback from documentation-only flows into runnable scripts with smoke verification.
 
-Default scope:
+Status: completed.
+
+Record: [2026-05-29 I-003 Operations Hardening](iterations/2026-05-29-i003-operations-hardening.md)
+
+Delivered scope:
 
 - Add backup and restore helper scripts.
 - Add restore verification steps.

@@ -66,13 +66,40 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d
 
 ## Update to a New Version
 
+Recommended scripted upgrade:
+
+```powershell
+git pull
+python scripts\ops.py upgrade --smoke
+```
+
+Manual upgrade:
+
 ```powershell
 git pull
 docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
-python scripts/smoke_test.py --base-url http://127.0.0.1:8000/api --username <username> --password <password>
+python scripts/smoke_test.py --base-url http://127.0.0.1:5173/api --username <username> --password <password>
 ```
 
-The private deployment compose file does not publish the backend port. For smoke testing a production stack, run the script from inside the Docker network or temporarily use the development compose file on a trusted machine. The browser UI continues to call the backend through the frontend nginx `/api` proxy.
+The private deployment compose file does not publish the backend port. Smoke testing a production stack should use the frontend nginx `/api` proxy at `http://127.0.0.1:5173/api`.
+
+## Roll Back a Failed Upgrade
+
+Recommended scripted rollback:
+
+```powershell
+python scripts\ops.py rollback --ref <previous-good-git-ref> --smoke
+```
+
+Manual rollback:
+
+```powershell
+git checkout <previous-good-git-ref>
+docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
+python scripts/smoke_test.py --base-url http://127.0.0.1:5173/api --username <username> --password <password>
+```
+
+After a successful rollback, decide whether to stay on the rollback ref, create a hotfix branch, or return to `main` after the issue is fixed.
 
 ## Port Conflicts
 
