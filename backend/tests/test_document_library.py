@@ -13,9 +13,15 @@ class FakeDocument:
     kind: str = "markdown"
     status: str = "ready"
     error_message: str = ""
+    chapter: str = "第 1 章"
+    tags: list[str] | None = None
     extracted_text: str = "SNMP 用于网络管理。\n考试重点包括 MIB、OID 和 Trap。"
     created_at: datetime = datetime(2026, 5, 29, 10, 30, 0)
     updated_at: datetime = datetime(2026, 5, 29, 10, 32, 0)
+
+    def __post_init__(self):
+        if self.tags is None:
+            self.tags = ["重点", "协议"]
 
 
 @dataclass
@@ -37,6 +43,8 @@ def test_serialize_document_card_includes_job_and_chunk_visibility():
         "kind": "markdown",
         "status": "ready",
         "error_message": "",
+        "chapter": "第 1 章",
+        "tags": ["重点", "协议"],
         "text_preview": "SNMP 用于网络管理。\n考试重点包括 MIB、OID 和 Trap。",
         "created_at": "2026-05-29T10:30:00",
         "updated_at": "2026-05-29T10:32:00",

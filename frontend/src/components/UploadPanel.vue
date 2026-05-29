@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { FileText, FileUp, Filter, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-vue-next'
+import { FileText, FileUp, Filter, RefreshCw, RotateCcw, Save, Search, Tag, Trash2 } from 'lucide-vue-next'
 import { api, type DocumentChunk, type DocumentItem, type DocumentJob } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -14,10 +14,13 @@ const message = ref('')
 const documentSearch = ref('')
 const statusFilter = ref<'all' | 'searchable' | 'processing' | 'failed'>('all')
 const sortMode = ref<'newest' | 'oldest' | 'type' | 'status'>('newest')
+const metadataChapter = ref('')
+const metadataTags = ref('')
 const loading = ref(false)
 const detailLoading = ref(false)
 const deleting = ref(false)
 const retryingFailed = ref(false)
+const metadataSaving = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | undefined
 
 const hasProcessingDocuments = computed(() =>
@@ -33,7 +36,7 @@ const visibleDocuments = computed(() => {
       if (statusFilter.value === 'processing' && !isProcessingDocument(document)) return false
       if (statusFilter.value === 'failed' && !isFailedDocument(document)) return false
       if (!keyword) return true
-      return [document.title, document.original_filename, document.kind, document.text_preview]
+      return [document.title, document.original_filename, document.kind, document.text_preview, document.chapter ?? '', ...(document.tags ?? [])]
         .some((value) => value.toLowerCase().includes(keyword))
     })
     .slice()
@@ -60,6 +63,11 @@ watch(
   },
   { immediate: true }
 )
+
+watch(selectedDocument, (document) => {
+  metadataChapter.value = document?.chapter ?? ''
+  metadataTags.value = (document?.tags ?? []).join(', ')
+})
 
 refreshTimer = setInterval(() => {
   if (store.selectedCourseId && hasProcessingDocuments.value) {
@@ -135,6 +143,39 @@ function compareDocuments(left: DocumentItem, right: DocumentItem) {
     return documentRuntimeStatus(left).localeCompare(documentRuntimeStatus(right)) || left.title.localeCompare(right.title)
   }
   return new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+}
+
+function parseTags(value: string) {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const rawTag of value.split(/[,，、\n]/)) {
+    const tag = rawTag.trim()
+    const key = tag.toLowerCase()
+    if (tag && !seen.has(key)) {
+      tags.push(tag)
+      seen.add(key)
+    }
+  }
+  return tags
+}
+
+async function saveDocumentMetadata() {
+  if (!selectedDocument.value) return
+  metadataSaving.value = true
+  message.value = '正在保存资料标签...'
+  try {
+    const updated = await api.updateDocumentMetadata(selectedDocument.value.id, {
+      chapter: metadataChapter.value.trim(),
+      tags: parseTags(metadataTags.value)
+    })
+    selectedDocument.value = updated
+    documents.value = documents.value.map((document) => (document.id === updated.id ? updated : document))
+    message.value = '资料标签已保存'
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    metadataSaving.value = false
+  }
 }
 
 async function deleteSelectedDocuments() {
@@ -378,6 +419,8 @@ function jobStatusClass(job: DocumentJob) {
           <span class="status-pill" :class="statusClass(document)">{{ statusLabel(document) }}</span>
           <span>{{ document.kind }}</span>
           <span>{{ document.chunk_count }} chunks</span>
+          <span v-if="document.chapter">章节：{{ document.chapter }}</span>
+          <span v-for="tag in document.tags ?? []" :key="`${document.id}:${tag}`" class="tag-pill">{{ tag }}</span>
           <span v-if="document.latest_job">任务 {{ document.latest_job.progress }}%</span>
         </div>
         <p v-if="document.text_preview" class="document-snippet">{{ document.text_preview }}</p>
@@ -419,6 +462,38 @@ function jobStatusClass(job: DocumentJob) {
         <p>{{ selectedDocumentFailureReason }}</p>
         <p>可以先重试解析；如果仍失败，请检查文件是否损坏、是否为可复制文本，或改用清晰的 PDF、Word、Markdown、图片笔记重新上传。</p>
       </article>
+      <div class="document-metadata-editor">
+        <strong>
+          <Tag :size="16" />
+          <span>章节与标签</span>
+        </strong>
+        <label>
+          <span>章节</span>
+          <input
+            v-model="metadataChapter"
+            data-testid="document-chapter-input"
+            placeholder="例如：第 2 章 传输层"
+          />
+        </label>
+        <label>
+          <span>标签</span>
+          <input
+            v-model="metadataTags"
+            data-testid="document-tags-input"
+            placeholder="用逗号分隔，例如：重点, 考试"
+          />
+        </label>
+        <button
+          class="secondary-button"
+          type="button"
+          data-testid="save-document-metadata"
+          :disabled="metadataSaving"
+          @click="saveDocumentMetadata"
+        >
+          <Save :size="16" />
+          <span>{{ metadataSaving ? '保存中' : '保存归类' }}</span>
+        </button>
+      </div>
       <div class="document-preview">
         <strong>解析预览</strong>
         <pre>{{ selectedDocument.text_preview || '暂无解析文本，等待 Worker 处理。' }}</pre>

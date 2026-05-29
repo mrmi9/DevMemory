@@ -40,8 +40,15 @@ class DocumentOut(BaseModel):
     kind: str
     status: str
     error_message: str = ""
+    chapter: str = ""
+    tags: list[str] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
+
+
+class DocumentUpdate(BaseModel):
+    chapter: str | None = Field(default=None, max_length=160)
+    tags: list[str] | None = None
 
 
 class JobOut(BaseModel):

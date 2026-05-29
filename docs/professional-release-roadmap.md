@@ -191,7 +191,7 @@ Delivered scope:
 - Add sorting by type, status, and upload time.
 - Add batch retry for failed documents.
 - Add duplicate file warning.
-- Defer persistent tags or chapter grouping to a later data-model iteration.
+- Add persistent document tags and chapter grouping.
 
 ### I-012 Answer-to-Study Asset Pipeline
 

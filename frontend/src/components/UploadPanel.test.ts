@@ -13,6 +13,7 @@ vi.mock('../api', () => ({
     listDocumentJobs: vi.fn(),
     listDocuments: vi.fn(),
     retryDocument: vi.fn(),
+    updateDocumentMetadata: vi.fn(),
     uploadDocument: vi.fn()
   }
 }))
@@ -24,6 +25,7 @@ describe('UploadPanel', () => {
     vi.mocked(api.listDocumentJobs).mockReset()
     vi.mocked(api.deleteDocument).mockReset()
     vi.mocked(api.retryDocument).mockReset()
+    vi.mocked(api.updateDocumentMetadata).mockReset()
     vi.mocked(api.uploadDocument).mockReset()
   })
 
@@ -384,5 +386,72 @@ describe('UploadPanel', () => {
 
     expect(api.uploadDocument).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('已存在同名资料“network.pdf”')
+  })
+
+  it('edits document chapter and tags for course material grouping', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useStudyStore()
+    store.selectedCourseId = 'course-1'
+    vi.mocked(api.listDocuments).mockResolvedValue([
+      {
+        id: 'document-1',
+        course_id: 'course-1',
+        title: 'transport.md',
+        original_filename: 'transport.md',
+        kind: 'markdown',
+        status: 'ready',
+        error_message: '',
+        text_preview: 'transport layer notes',
+        created_at: '2026-05-29T14:00:00',
+        updated_at: '2026-05-29T14:01:00',
+        chunk_count: 3,
+        chapter: '第 1 章',
+        tags: ['重点'],
+        latest_job: null
+      }
+    ])
+    vi.mocked(api.listDocumentChunks).mockResolvedValue([])
+    vi.mocked(api.listDocumentJobs).mockResolvedValue([])
+    vi.mocked(api.updateDocumentMetadata).mockResolvedValue({
+      id: 'document-1',
+      course_id: 'course-1',
+      title: 'transport.md',
+      original_filename: 'transport.md',
+      kind: 'markdown',
+      status: 'ready',
+      error_message: '',
+      text_preview: 'transport layer notes',
+      created_at: '2026-05-29T14:00:00',
+      updated_at: '2026-05-29T14:01:00',
+      chunk_count: 3,
+      chapter: '第 2 章 传输层',
+      tags: ['重点', '考试'],
+      latest_job: null
+    })
+
+    const wrapper = mount(UploadPanel, {
+      global: {
+        plugins: [pinia]
+      }
+    })
+    await flushPromises()
+
+    await wrapper.find('.document-row').trigger('click')
+    await flushPromises()
+    await wrapper.find('[data-testid="document-chapter-input"]').setValue('第 2 章 传输层')
+    await wrapper.find('[data-testid="document-tags-input"]').setValue('重点, 考试, 重点')
+    await wrapper.find('[data-testid="save-document-metadata"]').trigger('click')
+    await flushPromises()
+
+    expect(api.updateDocumentMetadata).toHaveBeenCalledWith('document-1', {
+      chapter: '第 2 章 传输层',
+      tags: ['重点', '考试']
+    })
+    expect(wrapper.text()).toContain('第 2 章 传输层')
+    expect(wrapper.text()).toContain('考试')
+
+    await wrapper.find('[data-testid="document-search"]').setValue('考试')
+    expect(wrapper.text()).toContain('transport.md')
   })
 })

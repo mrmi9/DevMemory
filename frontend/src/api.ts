@@ -13,6 +13,8 @@ export interface DocumentItem {
   kind: string
   status: string
   error_message: string
+  chapter?: string
+  tags?: string[]
   text_preview: string
   created_at: string
   updated_at: string
@@ -181,6 +183,13 @@ export class ApiClient {
 
   async getDocument(documentId: string) {
     return this.request<DocumentItem>(`/documents/${documentId}`)
+  }
+
+  async updateDocumentMetadata(documentId: string, payload: { chapter: string; tags: string[] }) {
+    return this.request<DocumentItem>(`/documents/${documentId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
   }
 
   async listDocumentChunks(documentId: string) {

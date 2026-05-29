@@ -17,11 +17,11 @@ Delivered:
 - Add sorting by newest upload, oldest upload, file type, and parsing status.
 - Add a batch retry action for all failed documents in the active course.
 - Warn on duplicate filenames before upload so users do not accidentally add the same material twice.
+- Persist chapter and tag metadata on documents, expose it in the document detail panel, and include it in document search.
 - Keep document selection, deletion, detail preview, chunk preview, job history, and single-document retry behavior intact.
 
 Deferred:
 
-- Persistent tags and chapter grouping need database schema and API changes, so they are deferred to a later feature iteration.
 - Application-level modal replacements for destructive confirmations remain part of a later UX iteration.
 
 ## Markdown Updates
@@ -30,9 +30,11 @@ Deferred:
 - `docs/user-guide.md`
 - `docs/professional-release-roadmap.md`
 - `docs/iterations/2026-05-29-i011-document-library-power-user-mode.md`
+- `backend/alembic/versions/20260529_0002_document_metadata.py`
 
 ## Acceptance Gates
 
+- `cd backend && ..\.venv\Scripts\python.exe -m pytest tests\test_document_library.py tests\test_study_routes.py`
 - `cd frontend && npm.cmd test -- UploadPanel.test.ts`
 - `cd frontend && npm.cmd test`
 - `cd frontend && npm.cmd run build`

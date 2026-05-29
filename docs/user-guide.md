@@ -59,6 +59,7 @@ For larger courses, use the document library controls to keep the material set m
 - Sort by newest upload, oldest upload, file type, or parsing status.
 - Retry all failed documents in one batch after fixing worker or source-file issues.
 - Watch for duplicate filename warnings before uploading another copy of the same material.
+- Open a document and save a chapter name plus tags such as `重点`, `真题`, or `实验`; these labels are searchable and stay with the document after refresh or deployment restart.
 
 ## Ask Questions
 

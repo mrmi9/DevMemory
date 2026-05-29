@@ -14,6 +14,7 @@ from app.api.routes import (
     delete_study_card,
     delete_wrong_note,
     update_generated_question,
+    update_document_metadata,
     update_study_card_mastery,
 )
 from app.models import (
@@ -28,7 +29,7 @@ from app.models import (
     StudyCard,
     WrongNote,
 )
-from app.schemas import GeneratedQuestionUpdate, StudyCardMasteryUpdate, StudyCardUpdate
+from app.schemas import DocumentUpdate, GeneratedQuestionUpdate, StudyCardMasteryUpdate, StudyCardUpdate
 
 
 @dataclass
@@ -163,6 +164,52 @@ def test_delete_document_hides_documents_owned_by_another_user(tmp_path):
     assert exc_info.value.status_code == 404
     assert db.deleted_document is None
     assert db.committed is False
+
+
+class MetadataDocumentDb:
+    def __init__(self, document):
+        self.document = document
+        self.committed = False
+        self.refreshed = None
+
+    def get(self, model, row_id):
+        return self.document if row_id == "document-1" else None
+
+    def commit(self):
+        self.committed = True
+
+    def refresh(self, row):
+        self.refreshed = row
+
+
+def test_update_document_metadata_persists_chapter_and_tags(monkeypatch):
+    document = FakeDocument("E:/DevMemory/uploads/user-1/course-1/note.md")
+    document.chapter = ""
+    document.tags = []
+    db = MetadataDocumentDb(document)
+
+    monkeypatch.setattr(
+        routes,
+        "_document_card",
+        lambda _db, row: {
+            "id": row.id,
+            "chapter": row.chapter,
+            "tags": row.tags,
+        },
+    )
+
+    payload = update_document_metadata(
+        "document-1",
+        DocumentUpdate(chapter=" 第 2 章 传输层 ", tags=["重点", " 网络 ", "重点", ""]),
+        user=FakeUser(),
+        db=db,
+    )
+
+    assert document.chapter == "第 2 章 传输层"
+    assert document.tags == ["重点", "网络"]
+    assert db.committed is True
+    assert db.refreshed is document
+    assert payload == {"id": "document-1", "chapter": "第 2 章 传输层", "tags": ["重点", "网络"]}
 
 
 class FakeCourse:

@@ -10,6 +10,8 @@ def serialize_document_card(document: Any, latest_job: Any | None, chunk_count: 
         "kind": document.kind,
         "status": document.status,
         "error_message": document.error_message or "",
+        "chapter": getattr(document, "chapter", "") or "",
+        "tags": list(getattr(document, "tags", None) or []),
         "text_preview": _preview_text(getattr(document, "extracted_text", "") or ""),
         "created_at": document.created_at.isoformat(),
         "updated_at": document.updated_at.isoformat(),

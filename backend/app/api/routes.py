@@ -22,6 +22,7 @@ from app.schemas import (
     DocumentCardOut,
     DocumentChunkOut,
     DocumentOut,
+    DocumentUpdate,
     GeneratedQuestionOut,
     GeneratedQuestionUpdate,
     GenerateRequest,
@@ -178,6 +179,25 @@ def get_document(document_id: str, user: User = Depends(get_current_user), db: S
     document = db.get(Document, document_id)
     if not document or document.user_id != user.id:
         raise HTTPException(status_code=404, detail="Document not found")
+    return _document_card(db, document)
+
+
+@router.patch("/documents/{document_id}", response_model=DocumentCardOut)
+def update_document_metadata(
+    document_id: str,
+    payload: DocumentUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    document = db.get(Document, document_id)
+    if not document or document.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if payload.chapter is not None:
+        document.chapter = payload.chapter.strip()
+    if payload.tags is not None:
+        document.tags = _normalize_document_tags(payload.tags)
+    db.commit()
+    db.refresh(document)
     return _document_card(db, document)
 
 
@@ -648,6 +668,20 @@ def _status_for_mastery(mastery: int) -> str:
     if mastery > 0:
         return "in_progress"
     return "not_started"
+
+
+def _normalize_document_tags(tags: list[str]) -> list[str]:
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for tag in tags:
+        cleaned = tag.strip()
+        key = cleaned.casefold()
+        if cleaned and key not in seen:
+            normalized.append(cleaned[:40])
+            seen.add(key)
+        if len(normalized) >= 12:
+            break
+    return normalized
 
 
 def _upsert_progress_record(

@@ -50,6 +50,8 @@ class Document(Base):
     file_path: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(40), default="uploaded", index=True)
     error_message: Mapped[str] = mapped_column(Text, default="")
+    chapter: Mapped[str] = mapped_column(String(160), default="")
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list)
     extracted_text: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=now_utc, onupdate=now_utc)

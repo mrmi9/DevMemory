@@ -7,7 +7,7 @@ The v1.0 target is a local or intranet private deployment. It is not a public Sa
 ## Features
 
 - Course-based document libraries for PDF, Word, Markdown, and image notes.
-- Power-user document controls for search, status filtering, sorting, duplicate warnings, and batch retry.
+- Power-user document controls for search, status filtering, sorting, tags, chapters, duplicate warnings, and batch retry.
 - Background parsing, chunking, embedding, and pgvector storage.
 - Course-scoped Q&A with cited source chunks.
 - Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
