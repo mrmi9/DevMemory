@@ -37,3 +37,5 @@ def test_request_logging_emits_structured_json(monkeypatch, caplog):
     assert payloads[-1]["path"] == "/health"
     assert payloads[-1]["status_code"] == 200
     assert payloads[-1]["duration_ms"] >= 0
+    assert payloads[-1]["request_id"]
+    assert response.headers["x-request-id"] == payloads[-1]["request_id"]

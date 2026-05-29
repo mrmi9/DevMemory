@@ -113,6 +113,21 @@ export interface Mindmap {
   created_at: string
 }
 
+export interface SystemStatus {
+  status: 'ok' | 'degraded'
+  environment: string
+  ai_mode: 'online' | 'offline_placeholder'
+  checks: {
+    deepseek?: {
+      configured: boolean
+      mode?: string
+      model?: string
+      base_url?: string
+    }
+    [key: string]: unknown
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 export class ApiClient {
@@ -125,6 +140,10 @@ export class ApiClient {
     }, false)
     this.token = data.access_token
     localStorage.setItem('study_token', this.token)
+  }
+
+  async systemStatus() {
+    return this.request<SystemStatus>('/system/status', {}, false)
   }
 
   async listCourses() {

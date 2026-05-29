@@ -12,6 +12,55 @@ def test_production_settings_reject_default_access_token_secret():
         validate_runtime_settings(settings)
 
 
+def test_production_settings_reject_empty_password_and_short_secret():
+    weak_secret = "short-secret"
+    settings = Settings(
+        environment="production",
+        access_token_secret=weak_secret,
+        default_password="",
+        cors_origins=["https://study.example"],
+    )
+
+    with pytest.raises(ValueError, match="STUDY_ACCESS_TOKEN_SECRET"):
+        validate_runtime_settings(settings)
+
+    settings = Settings(
+        environment="production",
+        access_token_secret="x" * 40,
+        default_password="",
+        cors_origins=["https://study.example"],
+    )
+
+    with pytest.raises(ValueError, match="STUDY_DEFAULT_PASSWORD"):
+        validate_runtime_settings(settings)
+
+
+def test_production_settings_validate_upload_dir_and_embedding_dimensions(tmp_path):
+    upload_dir = tmp_path / "uploads"
+    settings = Settings(
+        environment="production",
+        access_token_secret="x" * 40,
+        default_password="safe-password",
+        cors_origins=["https://study.example"],
+        upload_dir=upload_dir,
+        embedding_dimensions=768,
+    )
+
+    with pytest.raises(ValueError, match="STUDY_EMBEDDING_DIMENSIONS"):
+        validate_runtime_settings(settings)
+
+    settings = Settings(
+        environment="production",
+        access_token_secret="x" * 40,
+        default_password="safe-password",
+        cors_origins=["https://study.example"],
+        upload_dir=upload_dir,
+    )
+
+    validate_runtime_settings(settings)
+    assert upload_dir.exists()
+
+
 def test_application_uses_configured_cors_origins():
     from app.main import create_app
 

@@ -1,7 +1,8 @@
 from pathlib import Path
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.auth import create_token, ensure_default_user, get_current_user, verify_password
@@ -45,6 +46,36 @@ from app.services.study_library import build_wrong_note_from_question, parse_gen
 from app.services.study_generation import analyze_wrong_note, generate_cards, generate_mindmap, generate_questions
 
 router = APIRouter()
+
+
+@router.get("/system/status")
+def system_status(request: Request, db: Session = Depends(get_db)):
+    settings = getattr(request.app.state, "settings", get_settings())
+    checks = {
+        "database": _database_status(db),
+        "pgvector": _pgvector_status(db),
+        "upload_dir": _upload_dir_status(settings.upload_dir),
+        "deepseek": {
+            "ok": True,
+            "configured": bool(settings.deepseek_api_key),
+            "mode": "online" if settings.deepseek_api_key else "offline_placeholder",
+            "model": settings.deepseek_model,
+            "base_url": settings.deepseek_base_url,
+        },
+        "embedding": {
+            "ok": settings.embedding_dimensions == 384,
+            "provider": settings.embedding_provider,
+            "model": settings.embedding_model,
+            "dimensions": settings.embedding_dimensions,
+        },
+        "worker": _worker_status(db),
+    }
+    return {
+        "status": "ok" if all(item.get("ok") for item in checks.values()) else "degraded",
+        "environment": settings.environment,
+        "ai_mode": "online" if settings.deepseek_api_key else "offline_placeholder",
+        "checks": checks,
+    }
 
 
 @router.post("/auth/login", response_model=LoginResponse)
@@ -592,6 +623,48 @@ def _document_card(db: Session, document: Document, latest_job: IngestionJob | N
         )
     chunk_count = db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).count()
     return serialize_document_card(document, latest_job, chunk_count)
+
+
+def _database_status(db: Session) -> dict:
+    try:
+        db.execute(text("select 1")).scalar_one()
+        return {"ok": True}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
+
+
+def _pgvector_status(db: Session) -> dict:
+    try:
+        installed = db.execute(text("select extname from pg_extension where extname = 'vector'")).first()
+        return {"ok": bool(installed), "extension": "vector" if installed else ""}
+    except Exception as exc:
+        return {"ok": False, "extension": "vector", "error": str(exc)}
+
+
+def _upload_dir_status(upload_dir: Path) -> dict:
+    try:
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        probe_path = upload_dir / ".write-test"
+        probe_path.write_text("ok", encoding="utf-8")
+        probe_path.unlink(missing_ok=True)
+        return {"ok": True, "path": str(upload_dir)}
+    except OSError as exc:
+        return {"ok": False, "path": str(upload_dir), "error": str(exc)}
+
+
+def _worker_status(db: Session) -> dict:
+    try:
+        latest_job = db.query(IngestionJob).order_by(IngestionJob.updated_at.desc()).first()
+        if not latest_job:
+            return {"ok": True, "latest_job_status": "idle", "latest_job_progress": 0}
+        return {
+            "ok": latest_job.status in {"queued", "processing", "succeeded", "failed"},
+            "latest_job_status": latest_job.status,
+            "latest_job_progress": latest_job.progress,
+            "latest_job_updated_at": latest_job.updated_at.isoformat() if latest_job.updated_at else None,
+        }
+    except Exception as exc:
+        return {"ok": False, "latest_job_status": "unknown", "error": str(exc)}
 
 
 def _delete_course_related_rows(db: Session, user_id: str, course_id: str) -> list[str]:

@@ -31,10 +31,19 @@ def validate_runtime_settings(settings: Settings) -> None:
         return
     if settings.access_token_secret == "change-this-secret" or len(settings.access_token_secret) < 32:
         raise ValueError("STUDY_ACCESS_TOKEN_SECRET must be changed to a strong value in production")
-    if settings.default_password == "changeme":
+    if settings.default_password == "changeme" or not settings.default_password.strip():
         raise ValueError("STUDY_DEFAULT_PASSWORD must be changed in production")
     if "*" in settings.cors_origins:
         raise ValueError("STUDY_CORS_ORIGINS must not contain '*' in production")
+    if settings.embedding_dimensions != 384:
+        raise ValueError("STUDY_EMBEDDING_DIMENSIONS must stay 384 until the pgvector schema is migrated")
+    settings.upload_dir.mkdir(parents=True, exist_ok=True)
+    probe_path = settings.upload_dir / ".write-test"
+    try:
+        probe_path.write_text("ok", encoding="utf-8")
+        probe_path.unlink(missing_ok=True)
+    except OSError as exc:
+        raise ValueError("STUDY_UPLOAD_DIR must be writable in production") from exc
 
 
 @lru_cache

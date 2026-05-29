@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 import json
 import logging
 from time import perf_counter
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi import Request
@@ -25,6 +26,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
+    app.state.settings = settings
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -37,11 +39,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
         started_at = perf_counter()
+        request_id = request.headers.get("x-request-id") or str(uuid4())
         response = await call_next(request)
+        response.headers["x-request-id"] = request_id
         request_logger.info(
             json.dumps(
                 {
                     "event": "http_request",
+                    "request_id": request_id,
                     "method": request.method,
                     "path": request.url.path,
                     "status_code": response.status_code,

@@ -1,16 +1,53 @@
-# AI Personal Study Knowledge Base
+# DevMemory
 
-This project is a runnable first version of an AI-powered personal study platform. It includes a Vue workspace, FastAPI backend, PostgreSQL/pgvector schema, document ingestion worker, DeepSeek API adapter, and pluggable embedding provider.
+DevMemory is a private AI study knowledge base for course notes, document retrieval, AI-assisted Q&A, review cards, generated questions, wrong notes, mind maps, and progress tracking.
+
+The v1.0 target is a local or intranet private deployment. It is not a public SaaS product and does not include billing, multi-tenant administration, or organization roles.
 
 ## Features
 
-- Upload PDF, Word, Markdown, and image notes by course.
-- Parse, clean, chunk, embed, and store document content through a database-backed worker.
-- Ask course-scoped questions with cited source chunks.
-- Generate review cards, exam questions, wrong-note analysis, and Markmap mind maps.
-- Track learning progress with a schema that can grow from single-user to multi-user.
+- Course-based document libraries for PDF, Word, Markdown, and image notes.
+- Background parsing, chunking, embedding, and pgvector storage.
+- Course-scoped Q&A with cited source chunks.
+- Review cards, exam questions, wrong-note analysis, and Markmap mind maps.
+- Progress tracking for study cards and course review.
+- DeepSeek integration with offline placeholder mode when no API key is configured.
+- Private deployment health/readiness status at `/api/system/status`.
 
-## Docker Start
+## Private Deployment
+
+1. Copy the production environment template:
+
+```powershell
+copy .env.production.example .env.production
+```
+
+2. Edit `.env.production` and set strong values for:
+
+- `STUDY_ACCESS_TOKEN_SECRET`
+- `STUDY_DEFAULT_PASSWORD`
+- `STUDY_POSTGRES_PASSWORD`
+- `STUDY_DATABASE_URL`
+- `STUDY_CORS_ORIGINS`
+- `STUDY_DEEPSEEK_API_KEY` if real AI output is required
+
+3. Start the private deployment stack:
+
+```powershell
+docker compose --env-file .env.production -f docker-compose.prod.yml up --build -d
+```
+
+4. Open:
+
+```text
+http://localhost:5173
+```
+
+Production/private deployment details are in [docs/deployment.md](docs/deployment.md).
+
+## Development Start
+
+Development mode exposes the frontend, backend, and PostgreSQL ports for local debugging.
 
 1. Edit `.env` and set at least `STUDY_ACCESS_TOKEN_SECRET`.
 2. Add `STUDY_DEEPSEEK_API_KEY` if you want real AI generation instead of offline placeholder responses.
@@ -20,9 +57,13 @@ This project is a runnable first version of an AI-powered personal study platfor
 docker compose up --build
 ```
 
-4. Open `http://localhost:5173`.
+4. Open:
 
-Default credentials come from `.env`:
+```text
+http://localhost:5173
+```
+
+Default development credentials come from `.env`:
 
 - `STUDY_DEFAULT_USERNAME`
 - `STUDY_DEFAULT_PASSWORD`
@@ -49,27 +90,61 @@ Frontend dependencies:
 ```powershell
 cd frontend
 npm.cmd install
+npm.cmd test
 npm.cmd run build
 ```
+
+## Verification
+
+Backend:
+
+```powershell
+cd backend
+..\.venv\Scripts\python.exe -m pytest tests
+```
+
+Frontend:
+
+```powershell
+cd frontend
+npm.cmd test
+npm.cmd run build
+```
+
+Smoke test:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1
+```
+
+or:
+
+```powershell
+python scripts\smoke_test.py
+```
+
+Release checks are listed in [docs/release-checklist.md](docs/release-checklist.md).
+
+## Backup and Restore
+
+Back up both PostgreSQL and uploaded files. See [docs/backup-restore.md](docs/backup-restore.md).
+
+## User Guide
+
+End-user workflow documentation is in [docs/user-guide.md](docs/user-guide.md).
 
 ## Structure
 
 - `backend/app/services`: parsing, chunking, embedding, RAG prompt, and DeepSeek calls.
-- `backend/app/api/routes.py`: first-version REST API.
-- `backend/app/worker.py`: database job worker for parsing and embedding.
+- `backend/app/api/routes.py`: REST API.
+- `backend/app/worker.py`: database-backed ingestion worker.
 - `frontend/src/components`: course, upload, chat, study generation, mind map, and progress UI.
 - `infra/postgres/init.sql`: enables the pgvector extension.
+- `scripts/smoke_test.py`: API-based end-to-end smoke test.
 
 ## Notes
 
-- The default `HashEmbeddingProvider` is a lightweight local development implementation. Replace it with BGE-M3 or a cloud embedding provider by implementing `EmbeddingProvider.embed(texts)`.
-- If `STUDY_DEEPSEEK_API_KEY` is empty, the backend returns offline placeholder text so upload, parsing, and retrieval flows can be tested first.
-- The embedding provider is selected with `STUDY_EMBEDDING_PROVIDER`. The default `hash` mode is local and deterministic. To use an OpenAI-compatible embedding endpoint, set:
-  - `STUDY_EMBEDDING_PROVIDER=openai`
-  - `STUDY_EMBEDDING_API_KEY=<your key>`
-  - `STUDY_EMBEDDING_BASE_URL=https://api.openai.com/v1` or another compatible `/v1` endpoint
-  - `STUDY_EMBEDDING_MODEL=text-embedding-3-small` or a model with the same vector dimension as `STUDY_EMBEDDING_DIMENSIONS`
-- Production mode is enabled with `STUDY_ENVIRONMENT=production`. In production, startup refuses unsafe defaults for `STUDY_ACCESS_TOKEN_SECRET`, `STUDY_DEFAULT_PASSWORD`, and wildcard `STUDY_CORS_ORIGINS`.
-- Configure browser origins with `STUDY_CORS_ORIGINS`, for example `["https://study.example.com"]`.
-- The backend exposes `GET /health` for container and load-balancer health checks.
-- Docker Desktop and the Docker CLI are required for `docker compose up --build`.
+- The default `HashEmbeddingProvider` is a lightweight local development implementation.
+- The embedding provider is selected with `STUDY_EMBEDDING_PROVIDER`.
+- Production mode is enabled with `STUDY_ENVIRONMENT=production`.
+- In production, startup refuses unsafe defaults for `STUDY_ACCESS_TOKEN_SECRET`, `STUDY_DEFAULT_PASSWORD`, wildcard CORS origins, incompatible embedding dimensions, and unwritable upload directories.
