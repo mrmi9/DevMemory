@@ -5,6 +5,7 @@ export const useStudyStore = defineStore('study', {
   state: () => ({
     courses: [] as Course[],
     selectedCourseId: '',
+    progressRefreshKey: 0,
     busy: false,
     error: ''
   }),
@@ -36,6 +37,25 @@ export const useStudyStore = defineStore('study', {
       } finally {
         this.busy = false
       }
+    },
+    async deleteCourse(courseId: string) {
+      this.busy = true
+      this.error = ''
+      try {
+        await api.deleteCourse(courseId)
+        this.courses = this.courses.filter((course) => course.id !== courseId)
+        if (this.selectedCourseId === courseId) {
+          this.selectedCourseId = this.courses[0]?.id ?? ''
+        }
+      } catch (error) {
+        this.error = error instanceof Error ? error.message : String(error)
+        throw error
+      } finally {
+        this.busy = false
+      }
+    },
+    markProgressChanged() {
+      this.progressRefreshKey += 1
     }
   }
 })

@@ -59,6 +59,12 @@ button:disabled {
   color: #b91c1c;
 }
 
+.danger-icon-button {
+  background: #fef2f2;
+  color: #b91c1c;
+  margin-left: 0;
+}
+
 input,
 textarea {
   background: #fff;
@@ -69,6 +75,11 @@ textarea {
   padding: 10px 12px;
   resize: vertical;
   width: 100%;
+}
+
+input[type="checkbox"] {
+  min-width: 0;
+  width: auto;
 }
 
 .workspace {
@@ -175,18 +186,36 @@ textarea {
 }
 
 .course-row {
+  align-items: stretch;
   background: #f8fafc;
   border: 1px solid #e3e7ef;
+  border-radius: 8px;
   color: #172033;
-  justify-content: flex-start;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
   min-height: 58px;
-  padding: 10px;
-  text-align: left;
+  padding: 8px;
 }
 
 .course-row.active {
   border-color: #2563eb;
   box-shadow: inset 3px 0 0 #2563eb;
+}
+
+.course-select {
+  background: transparent;
+  color: #172033;
+  flex: 1;
+  justify-content: flex-start;
+  min-height: 40px;
+  min-width: 0;
+  padding: 2px;
+  text-align: left;
+}
+
+.course-select:disabled {
+  opacity: 0.7;
 }
 
 .course-row small {
@@ -195,11 +224,33 @@ textarea {
   margin-top: 3px;
 }
 
+.course-delete-button {
+  align-self: center;
+  background: #fef2f2;
+  color: #b91c1c;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0;
+  width: 32px;
+}
+
 .swatch {
   border-radius: 999px;
   flex: 0 0 12px;
   height: 12px;
   width: 12px;
+}
+
+.sr-only {
+  border: 0;
+  clip: rect(0 0 0 0);
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  padding: 0;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .upload-zone {
@@ -233,7 +284,8 @@ textarea {
 
 .document-list li,
 .document-detail,
-.chunk-row {
+.chunk-row,
+.job-row {
   background: #f8fafc;
   border: 1px solid #e3e7ef;
   border-radius: 8px;
@@ -260,6 +312,18 @@ textarea {
   display: flex;
   gap: 8px;
   min-width: 0;
+}
+
+.document-bulk-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.document-bulk-actions span {
+  color: #697386;
+  font-size: 13px;
 }
 
 .document-title strong {
@@ -317,7 +381,8 @@ textarea {
 }
 
 .document-detail,
-.chunk-list {
+.chunk-list,
+.job-history {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -349,8 +414,20 @@ textarea {
   max-height: 120px;
 }
 
-.chunk-row p {
+.chunk-row p,
+.job-row p {
   margin: 6px 0 0;
+}
+
+.job-row div {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.job-row small {
+  color: #697386;
 }
 
 .chat-panel,
@@ -360,6 +437,7 @@ textarea {
 
 .answer,
 .chat-message,
+.citation-detail,
 .generated-output {
   background: #f8fafc;
   border: 1px solid #e3e7ef;
@@ -380,19 +458,80 @@ textarea {
   padding-bottom: 2px;
 }
 
-.session-list button {
+.session-list > button,
+.session-item {
   background: #edf2f7;
+  border-radius: 6px;
   color: #172033;
   flex: 0 0 auto;
   max-width: 210px;
+}
+
+.session-list > button,
+.session-open-button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.session-list button.active {
+.session-list > button.active,
+.session-item.active {
   background: #172033;
   color: #fff;
+}
+
+.session-item {
+  align-items: center;
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+}
+
+.session-open-button {
+  background: transparent;
+  color: inherit;
+  flex: 1;
+  min-height: 32px;
+  min-width: 0;
+  padding: 0 8px;
+}
+
+.session-action-button {
+  flex: 0 0 auto;
+  min-height: 28px;
+  width: 28px;
+}
+
+.chat-document-filter {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chat-document-filter > span {
+  color: #697386;
+  font-size: 13px;
+}
+
+.chat-document-filter-item {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e3e7ef;
+  border-radius: 6px;
+  display: inline-flex;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 8px;
+}
+
+.chat-document-filter-item span {
+  color: #172033;
+  font-size: 13px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .chat-message.user {
@@ -436,6 +575,23 @@ textarea {
   border: 1px solid #e3e7ef;
   border-radius: 8px;
   padding: 12px;
+}
+
+.asset-card-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.asset-card-header strong {
+  min-width: 0;
+}
+
+.asset-card-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 6px;
 }
 
 .study-card p,
@@ -502,17 +658,76 @@ pre {
   margin-top: 12px;
 }
 
-.citation-strip span {
+.citation-button {
+  align-items: flex-start;
   background: #eef6f0;
-  border-radius: 999px;
+  color: #166534;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 260px;
+  min-height: 0;
+  padding: 7px 10px;
+  text-align: left;
+}
+
+.citation-button span {
   color: #166534;
   font-size: 12px;
-  padding: 5px 9px;
+  font-weight: 700;
+}
+
+.citation-button small {
+  color: #3f6f4a;
+  line-height: 1.35;
 }
 
 .citation-strip span.neutral {
   background: #f1f5f9;
   color: #475569;
+}
+
+.citation-detail {
+  display: grid;
+  gap: 6px;
+}
+
+.citation-detail small {
+  color: #697386;
+}
+
+.citation-detail p {
+  color: #475569;
+  margin: 0;
+}
+
+.mindmap-list {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mindmap-list-item {
+  align-items: flex-start;
+  background: #edf2f7;
+  color: #172033;
+  flex: 0 0 180px;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 54px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.mindmap-list-item.active {
+  background: #172033;
+  color: #fff;
+}
+
+.mindmap-list-item small {
+  color: inherit;
+  font-size: 12px;
+  opacity: 0.74;
 }
 
 .mindmap-canvas {

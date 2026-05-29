@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { FileText, FileUp, RefreshCw, RotateCcw, Trash2 } from 'lucide-vue-next'
-import { api, type DocumentChunk, type DocumentItem } from '../api'
+import { api, type DocumentChunk, type DocumentItem, type DocumentJob } from '../api'
 import { useStudyStore } from '../stores/study'
 
 const store = useStudyStore()
 const documents = ref<DocumentItem[]>([])
 const selectedDocument = ref<DocumentItem | null>(null)
+const selectedDocumentIds = ref<Set<string>>(new Set())
 const chunks = ref<DocumentChunk[]>([])
+const jobs = ref<DocumentJob[]>([])
 const message = ref('')
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -17,6 +19,7 @@ let refreshTimer: ReturnType<typeof setInterval> | undefined
 const hasProcessingDocuments = computed(() =>
   documents.value.some((document) => ['uploaded', 'processing'].includes(document.status) || document.latest_job?.status === 'queued')
 )
+const selectedDocuments = computed(() => documents.value.filter((document) => selectedDocumentIds.value.has(document.id)))
 const helperMessage = computed(() => {
   if (message.value) return message.value
   if (!store.selectedCourseId) return '请先登录并选择课程，再上传资料。'
@@ -47,16 +50,20 @@ async function loadDocuments(showLoading = true) {
   if (!store.selectedCourseId) {
     documents.value = []
     selectedDocument.value = null
+    selectedDocumentIds.value = new Set()
     chunks.value = []
+    jobs.value = []
     return
   }
   if (showLoading) loading.value = true
   try {
     documents.value = await api.listDocuments(store.selectedCourseId)
+    selectedDocumentIds.value = new Set([...selectedDocumentIds.value].filter((id) => documents.value.some((document) => document.id === id)))
     if (selectedDocument.value) {
       selectedDocument.value = documents.value.find((document) => document.id === selectedDocument.value?.id) ?? null
       if (!selectedDocument.value) {
         chunks.value = []
+        jobs.value = []
       }
     }
   } catch (error) {
@@ -66,12 +73,53 @@ async function loadDocuments(showLoading = true) {
   }
 }
 
+function toggleDocumentSelection(documentId: string, checked: boolean) {
+  const nextSelectedIds = new Set(selectedDocumentIds.value)
+  if (checked) {
+    nextSelectedIds.add(documentId)
+  } else {
+    nextSelectedIds.delete(documentId)
+  }
+  selectedDocumentIds.value = nextSelectedIds
+}
+
+async function deleteSelectedDocuments() {
+  const targets = selectedDocuments.value
+  if (!targets.length) return
+  const confirmed = window.confirm(`确定删除选中的 ${targets.length} 份资料吗？删除后会从知识库检索中移除。`)
+  if (!confirmed) return
+  deleting.value = true
+  message.value = `正在删除 ${targets.length} 份资料...`
+  try {
+    await Promise.all(targets.map((document) => api.deleteDocument(document.id)))
+    const deletedIds = new Set(targets.map((document) => document.id))
+    documents.value = documents.value.filter((document) => !deletedIds.has(document.id))
+    selectedDocumentIds.value = new Set()
+    if (selectedDocument.value && deletedIds.has(selectedDocument.value.id)) {
+      selectedDocument.value = null
+      chunks.value = []
+      jobs.value = []
+    }
+    message.value = `已删除 ${targets.length} 份资料`
+  } catch (error) {
+    message.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    deleting.value = false
+  }
+}
+
 async function selectDocument(document: DocumentItem) {
   selectedDocument.value = document
   chunks.value = []
+  jobs.value = []
   detailLoading.value = true
   try {
-    chunks.value = await api.listDocumentChunks(document.id)
+    const [nextChunks, nextJobs] = await Promise.all([
+      api.listDocumentChunks(document.id),
+      api.listDocumentJobs(document.id)
+    ])
+    chunks.value = nextChunks
+    jobs.value = nextJobs
   } catch (error) {
     message.value = error instanceof Error ? error.message : String(error)
   } finally {
@@ -100,8 +148,10 @@ async function deleteSelectedDocument() {
   try {
     await api.deleteDocument(document.id)
     documents.value = documents.value.filter((item) => item.id !== document.id)
+    selectedDocumentIds.value = new Set([...selectedDocumentIds.value].filter((id) => id !== document.id))
     selectedDocument.value = null
     chunks.value = []
+    jobs.value = []
     message.value = '资料已删除'
   } catch (error) {
     message.value = error instanceof Error ? error.message : String(error)
@@ -146,6 +196,12 @@ function statusClass(document: DocumentItem) {
   if (status === 'succeeded' || document.status === 'ready') return 'success'
   return 'working'
 }
+
+function jobStatusClass(job: DocumentJob) {
+  if (job.status === 'failed') return 'danger'
+  if (job.status === 'succeeded') return 'success'
+  return 'working'
+}
 </script>
 
 <template>
@@ -167,6 +223,19 @@ function statusClass(document: DocumentItem) {
       <span>{{ store.selectedCourseId ? '选择 PDF、Word、Markdown 或图片笔记' : '选择课程后即可上传资料' }}</span>
     </label>
     <p class="muted">{{ helperMessage }}</p>
+    <div v-if="documents.length" class="document-bulk-actions">
+      <span>{{ selectedDocuments.length }} 份已选</span>
+      <button
+        class="danger-button"
+        type="button"
+        title="批量删除资料"
+        :disabled="deleting || !selectedDocuments.length"
+        @click="deleteSelectedDocuments"
+      >
+        <Trash2 :size="16" />
+        <span>{{ deleting && selectedDocuments.length ? '删除中' : '批量删除' }}</span>
+      </button>
+    </div>
     <ul class="document-list">
       <li
         v-for="document in documents"
@@ -176,6 +245,14 @@ function statusClass(document: DocumentItem) {
         @click="selectDocument(document)"
       >
         <div class="document-title">
+          <input
+            data-testid="document-select"
+            type="checkbox"
+            :checked="selectedDocumentIds.has(document.id)"
+            :disabled="deleting"
+            @click.stop
+            @change="toggleDocumentSelection(document.id, ($event.target as HTMLInputElement).checked)"
+          />
           <FileText :size="17" />
           <strong>{{ document.title }}</strong>
         </div>
@@ -226,6 +303,17 @@ function statusClass(document: DocumentItem) {
           <small>#{{ chunk.chunk_index }} · {{ chunk.token_count }} tokens</small>
           <p>{{ chunk.text }}</p>
         </article>
+      </div>
+      <div class="job-history">
+        <strong>任务历史</strong>
+        <article v-for="job in jobs" :key="job.id" class="job-row">
+          <div>
+            <span class="status-pill" :class="jobStatusClass(job)">{{ job.status }}</span>
+            <small>{{ job.id }} 路 {{ job.job_type }} 路 {{ job.progress }}%</small>
+          </div>
+          <p v-if="job.error_message" class="inline-error">{{ job.error_message }}</p>
+        </article>
+        <p v-if="!jobs.length && !detailLoading" class="muted">暂无任务历史</p>
       </div>
     </aside>
   </section>

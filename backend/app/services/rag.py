@@ -9,6 +9,7 @@ class RetrievedChunk:
     text: str
     page_number: int | None
     similarity: float
+    document_id: str = ""
 
 
 def build_rag_prompt(question: str, chunks: list[RetrievedChunk]) -> str:

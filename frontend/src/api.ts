@@ -35,9 +35,26 @@ export interface DocumentChunk {
   char_end: number
 }
 
+export interface DocumentJob {
+  id: string
+  document_id: string
+  job_type: string
+  status: string
+  progress: number
+  error_message: string
+}
+
 export interface ChatResponse {
   answer: string
-  citations: Array<{ chunk_id: number; document_title: string; page_number: number | null; similarity: number }>
+  citations: Array<{
+    chunk_id: number
+    document_id: string
+    document_title: string
+    course_title: string
+    text_preview: string
+    page_number: number | null
+    similarity: number
+  }>
   session_id: string
 }
 
@@ -88,6 +105,14 @@ export interface GeneratedQuestion {
   created_at: string
 }
 
+export interface Mindmap {
+  id: string
+  course_id: string | null
+  title: string
+  markdown: string
+  created_at: string
+}
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? '/api'
 
 export class ApiClient {
@@ -110,6 +135,10 @@ export class ApiClient {
     return this.request<Course>('/courses', { method: 'POST', body: JSON.stringify(payload) })
   }
 
+  async deleteCourse(courseId: string) {
+    return this.request<{ ok: boolean }>(`/courses/${courseId}`, { method: 'DELETE' })
+  }
+
   async uploadDocument(courseId: string, file: File) {
     const body = new FormData()
     body.append('file', file)
@@ -128,6 +157,10 @@ export class ApiClient {
     return this.request<DocumentChunk[]>(`/documents/${documentId}/chunks`)
   }
 
+  async listDocumentJobs(documentId: string) {
+    return this.request<DocumentJob[]>(`/documents/${documentId}/jobs`)
+  }
+
   async retryDocument(documentId: string) {
     return this.request<DocumentItem>(`/documents/${documentId}/retry`, { method: 'POST', body: JSON.stringify({}) })
   }
@@ -136,10 +169,10 @@ export class ApiClient {
     return this.request<{ ok: boolean }>(`/documents/${documentId}`, { method: 'DELETE' })
   }
 
-  async ask(question: string, courseId?: string, sessionId?: string) {
+  async ask(question: string, courseId?: string, sessionId?: string, documentIds: string[] = []) {
     return this.request<ChatResponse>('/chat', {
       method: 'POST',
-      body: JSON.stringify({ question, course_id: courseId || null, session_id: sessionId || null, document_ids: [] })
+      body: JSON.stringify({ question, course_id: courseId || null, session_id: sessionId || null, document_ids: documentIds })
     })
   }
 
@@ -150,21 +183,53 @@ export class ApiClient {
     })
   }
 
+  async generateMindmap(topic: string, courseId?: string) {
+    return this.generate('/mindmaps', topic, courseId)
+  }
+
+  async listMindmaps(courseId?: string) {
+    const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''
+    return this.request<Mindmap[]>(`/mindmaps${query}`)
+  }
+
+  async deleteMindmap(mindmapId: string) {
+    return this.request<{ ok: boolean }>(`/mindmaps/${mindmapId}`, { method: 'DELETE' })
+  }
+
   async listStudyCards(courseId?: string) {
     const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''
     return this.request<StudyCard[]>(`/study/cards${query}`)
   }
 
   async updateStudyCardMastery(cardId: string, mastery: number) {
+    return this.updateStudyCard(cardId, { mastery })
+  }
+
+  async updateStudyCard(cardId: string, payload: { front?: string; back?: string; mastery?: number }) {
     return this.request<StudyCard>(`/study/cards/${cardId}`, {
       method: 'PATCH',
-      body: JSON.stringify({ mastery })
+      body: JSON.stringify(payload)
     })
+  }
+
+  async deleteStudyCard(cardId: string) {
+    return this.request<{ ok: boolean }>(`/study/cards/${cardId}`, { method: 'DELETE' })
   }
 
   async listGeneratedQuestions(courseId?: string) {
     const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''
     return this.request<GeneratedQuestion[]>(`/study/questions${query}`)
+  }
+
+  async updateGeneratedQuestion(questionId: string, payload: { prompt?: string; answer?: string; explanation?: string }) {
+    return this.request<GeneratedQuestion>(`/study/questions/${questionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload)
+    })
+  }
+
+  async deleteGeneratedQuestion(questionId: string) {
+    return this.request<{ ok: boolean }>(`/study/questions/${questionId}`, { method: 'DELETE' })
   }
 
   async addGeneratedQuestionToWrongNotes(questionId: string) {
@@ -192,6 +257,10 @@ export class ApiClient {
     return this.request<WrongNote[]>(`/study/wrong-notes${query}`)
   }
 
+  async deleteWrongNote(noteId: string) {
+    return this.request<{ ok: boolean }>(`/study/wrong-notes/${noteId}`, { method: 'DELETE' })
+  }
+
   async progressOverview() {
     return this.request<{ courses: number; records: number; average_mastery: number; items: unknown[] }>('/progress/overview')
   }
@@ -199,6 +268,17 @@ export class ApiClient {
   async listChatSessions(courseId?: string) {
     const query = courseId ? `?course_id=${encodeURIComponent(courseId)}` : ''
     return this.request<ChatSession[]>(`/chat/sessions${query}`)
+  }
+
+  async updateChatSession(sessionId: string, title: string) {
+    return this.request<ChatSession>(`/chat/sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title })
+    })
+  }
+
+  async deleteChatSession(sessionId: string) {
+    return this.request<{ ok: boolean }>(`/chat/sessions/${sessionId}`, { method: 'DELETE' })
   }
 
   async listChatMessages(sessionId: string) {

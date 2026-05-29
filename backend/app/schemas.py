@@ -89,7 +89,10 @@ class ChatRequest(BaseModel):
 
 class Citation(BaseModel):
     chunk_id: int
+    document_id: str
     document_title: str
+    course_title: str
+    text_preview: str
     page_number: int | None = None
     similarity: float
 
@@ -105,6 +108,10 @@ class ChatSessionOut(BaseModel):
     course_id: str | None = None
     title: str
     created_at: str
+
+
+class ChatSessionUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
 
 
 class ChatMessageOut(BaseModel):
@@ -126,6 +133,14 @@ class GeneratedTextResponse(BaseModel):
     content: str
 
 
+class MindmapOut(BaseModel):
+    id: str
+    course_id: str | None = None
+    title: str
+    markdown: str
+    created_at: str
+
+
 class StudyCardOut(BaseModel):
     id: str
     course_id: str | None = None
@@ -136,8 +151,14 @@ class StudyCardOut(BaseModel):
     created_at: str
 
 
-class StudyCardMasteryUpdate(BaseModel):
-    mastery: int = Field(ge=0, le=5)
+class StudyCardUpdate(BaseModel):
+    front: str | None = Field(default=None, min_length=1)
+    back: str | None = Field(default=None, min_length=1)
+    mastery: int | None = Field(default=None, ge=0, le=5)
+
+
+class StudyCardMasteryUpdate(StudyCardUpdate):
+    pass
 
 
 class GeneratedQuestionOut(BaseModel):
@@ -148,6 +169,12 @@ class GeneratedQuestionOut(BaseModel):
     answer: str
     explanation: str = ""
     created_at: str
+
+
+class GeneratedQuestionUpdate(BaseModel):
+    prompt: str | None = Field(default=None, min_length=1)
+    answer: str | None = Field(default=None, min_length=1)
+    explanation: str | None = None
 
 
 class WrongNoteRequest(BaseModel):

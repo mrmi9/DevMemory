@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import secrets
 import time
 
 from fastapi import Depends, Header, HTTPException, status
@@ -12,13 +13,30 @@ from app.models import User
 
 
 def hash_password(password: str) -> str:
-    salt = "study-kb"
-    digest = hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
-    return f"sha256${digest}"
+    iterations = 210_000
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations).hex()
+    return f"pbkdf2_sha256${iterations}${salt}${digest}"
 
 
 def verify_password(password: str, stored_hash: str) -> bool:
-    return hmac.compare_digest(hash_password(password), stored_hash)
+    if stored_hash.startswith("pbkdf2_sha256$"):
+        try:
+            _, iterations_text, salt, digest = stored_hash.split("$", 3)
+            candidate = hashlib.pbkdf2_hmac(
+                "sha256",
+                password.encode("utf-8"),
+                salt.encode("utf-8"),
+                int(iterations_text),
+            ).hex()
+        except ValueError:
+            return False
+        return hmac.compare_digest(candidate, digest)
+    if stored_hash.startswith("sha256$"):
+        salt = "study-kb"
+        digest = hashlib.sha256(f"{salt}:{password}".encode("utf-8")).hexdigest()
+        return hmac.compare_digest(f"sha256${digest}", stored_hash)
+    return False
 
 
 def create_token(user_id: str) -> str:

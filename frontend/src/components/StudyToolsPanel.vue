@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue'
-import { Brain, ClipboardList, Layers, NotebookPen, RefreshCw } from 'lucide-vue-next'
+import { Brain, ClipboardList, Layers, NotebookPen, Pencil, RefreshCw, Trash2 } from 'lucide-vue-next'
 import { api, type GeneratedQuestion, type StudyCard, type WrongNote } from '../api'
 import { useStudyStore } from '../stores/study'
 
@@ -97,8 +97,41 @@ async function updateCardMastery(card: StudyCard, mastery: number) {
   try {
     const updated = await api.updateStudyCardMastery(card.id, nextMastery)
     studyCards.value = studyCards.value.map((item) => (item.id === updated.id ? updated : item))
+    store.markProgressChanged()
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+async function editStudyCard(card: StudyCard) {
+  const nextFront = window.prompt('编辑卡片正面', card.front)?.trim()
+  if (!nextFront) return
+  const nextBack = window.prompt('编辑卡片背面', card.back)?.trim()
+  if (!nextBack) return
+  busy.value = `card-edit:${card.id}`
+  error.value = ''
+  try {
+    const updated = await api.updateStudyCard(card.id, { front: nextFront, back: nextBack })
+    studyCards.value = studyCards.value.map((item) => (item.id === updated.id ? updated : item))
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function deleteStudyCard(card: StudyCard) {
+  if (!window.confirm(`确定删除“${card.front}”吗？`)) return
+  busy.value = `card-delete:${card.id}`
+  error.value = ''
+  try {
+    await api.deleteStudyCard(card.id)
+    studyCards.value = studyCards.value.filter((item) => item.id !== card.id)
+    store.markProgressChanged()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    busy.value = ''
   }
 }
 
@@ -117,6 +150,42 @@ async function addQuestionToWrongNotes(question: GeneratedQuestion) {
   }
 }
 
+async function editGeneratedQuestion(question: GeneratedQuestion) {
+  const nextPrompt = window.prompt('编辑试题题干', question.prompt)?.trim()
+  if (!nextPrompt) return
+  const nextAnswer = window.prompt('编辑参考答案', question.answer)?.trim()
+  if (!nextAnswer) return
+  const nextExplanation = window.prompt('编辑解析', question.explanation)?.trim() ?? ''
+  busy.value = `question-edit:${question.id}`
+  error.value = ''
+  try {
+    const updated = await api.updateGeneratedQuestion(question.id, {
+      prompt: nextPrompt,
+      answer: nextAnswer,
+      explanation: nextExplanation
+    })
+    generatedQuestions.value = generatedQuestions.value.map((item) => (item.id === updated.id ? updated : item))
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    busy.value = ''
+  }
+}
+
+async function deleteGeneratedQuestion(question: GeneratedQuestion) {
+  if (!window.confirm(`确定删除“${question.prompt}”吗？`)) return
+  busy.value = `question-delete:${question.id}`
+  error.value = ''
+  try {
+    await api.deleteGeneratedQuestion(question.id)
+    generatedQuestions.value = generatedQuestions.value.filter((item) => item.id !== question.id)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    busy.value = ''
+  }
+}
+
 async function loadWrongNotes() {
   if (!store.selectedCourseId) {
     wrongNotes.value = []
@@ -126,6 +195,20 @@ async function loadWrongNotes() {
     wrongNotes.value = await api.listWrongNotes(store.selectedCourseId)
   } catch (err) {
     error.value = err instanceof Error ? err.message : String(err)
+  }
+}
+
+async function deleteWrongNote(note: WrongNote) {
+  if (!window.confirm(`确定删除“${note.title}”吗？`)) return
+  busy.value = `wrong-delete:${note.id}`
+  error.value = ''
+  try {
+    await api.deleteWrongNote(note.id)
+    wrongNotes.value = wrongNotes.value.filter((item) => item.id !== note.id)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  } finally {
+    busy.value = ''
   }
 }
 </script>
@@ -158,7 +241,17 @@ async function loadWrongNotes() {
         <span>{{ studyCards.length }} 张</span>
       </header>
       <article v-for="card in studyCards" :key="card.id" class="study-card">
-        <strong>{{ card.front }}</strong>
+        <header class="asset-card-header">
+          <strong>{{ card.front }}</strong>
+          <div class="asset-card-actions">
+            <button class="icon-button" type="button" title="编辑卡片" :disabled="!!busy" @click="editStudyCard(card)">
+              <Pencil :size="15" />
+            </button>
+            <button class="icon-button danger-icon-button" type="button" title="删除卡片" :disabled="!!busy" @click="deleteStudyCard(card)">
+              <Trash2 :size="15" />
+            </button>
+          </div>
+        </header>
         <p>{{ card.back }}</p>
         <div class="mastery-control">
           <button type="button" title="降低掌握度" :disabled="card.mastery <= 0" @click="updateCardMastery(card, card.mastery - 1)">
@@ -179,7 +272,17 @@ async function loadWrongNotes() {
         <span>{{ generatedQuestions.length }} 套</span>
       </header>
       <article v-for="question in generatedQuestions" :key="question.id" class="generated-question-card">
-        <strong>{{ question.prompt }}</strong>
+        <header class="asset-card-header">
+          <strong>{{ question.prompt }}</strong>
+          <div class="asset-card-actions">
+            <button class="icon-button" type="button" title="编辑试题" :disabled="!!busy" @click="editGeneratedQuestion(question)">
+              <Pencil :size="15" />
+            </button>
+            <button class="icon-button danger-icon-button" type="button" title="删除试题" :disabled="!!busy" @click="deleteGeneratedQuestion(question)">
+              <Trash2 :size="15" />
+            </button>
+          </div>
+        </header>
         <pre>{{ question.answer }}</pre>
         <p v-if="question.explanation" class="muted">{{ question.explanation }}</p>
         <button
@@ -214,7 +317,12 @@ async function loadWrongNotes() {
         <span>{{ wrongNotes.length }} 条</span>
       </header>
       <article v-for="note in wrongNotes" :key="note.id" class="wrong-note-card">
-        <strong>{{ note.title }}</strong>
+        <header class="asset-card-header">
+          <strong>{{ note.title }}</strong>
+          <button class="icon-button danger-icon-button" type="button" title="删除错题" :disabled="!!busy" @click="deleteWrongNote(note)">
+            <Trash2 :size="15" />
+          </button>
+        </header>
         <p>{{ note.original_question }}</p>
         <dl>
           <template v-if="note.user_answer">

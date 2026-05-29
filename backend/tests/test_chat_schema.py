@@ -1,5 +1,5 @@
 from app.services.embeddings import vector_values
-from app.schemas import ChatRequest, ChatResponse
+from app.schemas import ChatRequest, ChatResponse, Citation
 
 
 def test_chat_schema_supports_session_continuation():
@@ -8,6 +8,22 @@ def test_chat_schema_supports_session_continuation():
 
     assert request.session_id == "session-1"
     assert response.session_id == "session-1"
+
+
+def test_citation_exposes_document_link_and_text_preview():
+    citation = Citation(
+        chunk_id=7,
+        document_id="document-1",
+        document_title="network.pdf",
+        course_title="Computer Networks",
+        text_preview="SNMP trap is an event notification.",
+        page_number=3,
+        similarity=0.92,
+    )
+
+    assert citation.document_id == "document-1"
+    assert citation.course_title == "Computer Networks"
+    assert citation.text_preview == "SNMP trap is an event notification."
 
 
 class AmbiguousVector:

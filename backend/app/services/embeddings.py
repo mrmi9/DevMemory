@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 import hashlib
 import math
+from collections.abc import Callable
+
+import httpx
+
+from app.config import get_settings
 
 
 class EmbeddingProvider(ABC):
@@ -30,6 +35,49 @@ class HashEmbeddingProvider(EmbeddingProvider):
         if norm == 0:
             return vector
         return [round(value / norm, 8) for value in vector]
+
+
+class OpenAICompatibleEmbeddingProvider(EmbeddingProvider):
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        model: str,
+        dimensions: int,
+        client_factory: Callable[..., httpx.Client] = httpx.Client,
+    ) -> None:
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.dimensions = dimensions
+        self.client_factory = client_factory
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        if not self.api_key:
+            raise ValueError("Embedding API key is required for OpenAI-compatible provider")
+        payload = {"model": self.model, "input": texts, "dimensions": self.dimensions}
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        with self.client_factory(timeout=60) as client:
+            response = client.post(f"{self.base_url}/embeddings", json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+        return [list(item["embedding"]) for item in data["data"]]
+
+
+def get_embedding_provider(provider_name: str | None = None, dimensions: int | None = None) -> EmbeddingProvider:
+    settings = get_settings()
+    name = (provider_name or settings.embedding_provider).strip().lower()
+    provider_dimensions = dimensions or settings.embedding_dimensions
+    if name == "hash":
+        return HashEmbeddingProvider(dimensions=provider_dimensions)
+    if name in {"openai", "openai-compatible", "openai_compatible"}:
+        return OpenAICompatibleEmbeddingProvider(
+            api_key=settings.embedding_api_key,
+            base_url=settings.embedding_base_url,
+            model=settings.embedding_model,
+            dimensions=provider_dimensions,
+        )
+    raise ValueError(f"Unsupported embedding provider: {name}")
 
 
 def _tokenize(text: str):

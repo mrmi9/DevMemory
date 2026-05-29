@@ -7,7 +7,7 @@ from app.database import SessionLocal, create_all
 from app.models import Document, DocumentChunk, IngestionJob
 from app.services.chunking import chunk_text
 from app.services.document_parser import parse_document_text
-from app.services.embeddings import HashEmbeddingProvider
+from app.services.embeddings import get_embedding_provider
 
 
 def process_next_job(db: Session) -> bool:
@@ -39,7 +39,7 @@ def process_next_job(db: Session) -> bool:
         db.commit()
 
         chunks = chunk_text(text)
-        provider = HashEmbeddingProvider()
+        provider = get_embedding_provider()
         vectors = provider.embed([chunk.text for chunk in chunks])
         db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).delete()
         for chunk, vector in zip(chunks, vectors):

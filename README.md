@@ -64,4 +64,12 @@ npm.cmd run build
 
 - The default `HashEmbeddingProvider` is a lightweight local development implementation. Replace it with BGE-M3 or a cloud embedding provider by implementing `EmbeddingProvider.embed(texts)`.
 - If `STUDY_DEEPSEEK_API_KEY` is empty, the backend returns offline placeholder text so upload, parsing, and retrieval flows can be tested first.
+- The embedding provider is selected with `STUDY_EMBEDDING_PROVIDER`. The default `hash` mode is local and deterministic. To use an OpenAI-compatible embedding endpoint, set:
+  - `STUDY_EMBEDDING_PROVIDER=openai`
+  - `STUDY_EMBEDDING_API_KEY=<your key>`
+  - `STUDY_EMBEDDING_BASE_URL=https://api.openai.com/v1` or another compatible `/v1` endpoint
+  - `STUDY_EMBEDDING_MODEL=text-embedding-3-small` or a model with the same vector dimension as `STUDY_EMBEDDING_DIMENSIONS`
+- Production mode is enabled with `STUDY_ENVIRONMENT=production`. In production, startup refuses unsafe defaults for `STUDY_ACCESS_TOKEN_SECRET`, `STUDY_DEFAULT_PASSWORD`, and wildcard `STUDY_CORS_ORIGINS`.
+- Configure browser origins with `STUDY_CORS_ORIGINS`, for example `["https://study.example.com"]`.
+- The backend exposes `GET /health` for container and load-balancer health checks.
 - Docker Desktop and the Docker CLI are required for `docker compose up --build`.

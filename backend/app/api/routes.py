@@ -13,6 +13,7 @@ from app.schemas import (
     ChatResponse,
     ChatMessageOut,
     ChatSessionOut,
+    ChatSessionUpdate,
     Citation,
     CourseCreate,
     CourseOut,
@@ -21,20 +22,23 @@ from app.schemas import (
     DocumentChunkOut,
     DocumentOut,
     GeneratedQuestionOut,
+    GeneratedQuestionUpdate,
     GenerateRequest,
     GeneratedTextResponse,
     JobOut,
     LoginRequest,
     LoginResponse,
+    MindmapOut,
     ProgressUpdate,
     StudyCardMasteryUpdate,
+    StudyCardUpdate,
     StudyCardOut,
     WrongNoteRequest,
     WrongNoteOut,
 )
 from app.services.document_parser import detect_document_kind
 from app.services.document_library import serialize_chunk_row, serialize_document_card
-from app.services.embeddings import HashEmbeddingProvider, cosine_similarity, vector_values
+from app.services.embeddings import cosine_similarity, get_embedding_provider, vector_values
 from app.services.llm import DeepSeekClient
 from app.services.rag import RetrievedChunk, build_rag_prompt
 from app.services.study_library import build_wrong_note_from_question, parse_generated_cards, parse_generated_questions, serialize_generated_question_row, serialize_study_card_row, serialize_wrong_note_row
@@ -78,8 +82,11 @@ def update_course(course_id: str, payload: CourseUpdate, user: User = Depends(ge
 @router.delete("/courses/{course_id}")
 def delete_course(course_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     course = _get_course(db, user.id, course_id)
+    file_paths = _delete_course_related_rows(db, user.id, course_id)
     db.delete(course)
     db.commit()
+    for file_path in file_paths:
+        _remove_uploaded_file(file_path)
     return {"ok": True}
 
 
@@ -228,7 +235,10 @@ async def chat(payload: ChatRequest, user: User = Depends(get_current_user), db:
     citations = [
         Citation(
             chunk_id=chunk.chunk_id,
+            document_id=chunk.document_id,
             document_title=chunk.document_title,
+            course_title=chunk.course_title,
+            text_preview=_citation_preview(chunk.text),
             page_number=chunk.page_number,
             similarity=chunk.similarity,
         )
@@ -251,15 +261,32 @@ def list_chat_sessions(course_id: str | None = None, user: User = Depends(get_cu
     if course_id:
         query = query.filter(ChatSession.course_id == course_id)
     sessions = query.order_by(ChatSession.created_at.desc()).limit(50).all()
-    return [
-        {
-            "id": session.id,
-            "course_id": session.course_id,
-            "title": session.title,
-            "created_at": session.created_at.isoformat(),
-        }
-        for session in sessions
-    ]
+    return [_chat_session_row(session) for session in sessions]
+
+
+@router.patch("/chat/sessions/{session_id}", response_model=ChatSessionOut)
+def rename_chat_session(session_id: str, payload: ChatSessionUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = db.get(ChatSession, session_id)
+    if not session or session.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Session title cannot be empty")
+    session.title = title
+    db.commit()
+    db.refresh(session)
+    return _chat_session_row(session)
+
+
+@router.delete("/chat/sessions/{session_id}")
+def delete_chat_session(session_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    session = db.get(ChatSession, session_id)
+    if not session or session.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Chat session not found")
+    db.query(ChatMessage).filter(ChatMessage.session_id == session_id).delete(synchronize_session=False)
+    db.delete(session)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/chat/sessions/{session_id}/messages", response_model=list[ChatMessageOut])
@@ -300,14 +327,43 @@ def list_study_cards(course_id: str | None = None, user: User = Depends(get_curr
 
 
 @router.patch("/study/cards/{card_id}", response_model=StudyCardOut)
-def update_study_card_mastery(card_id: str, payload: StudyCardMasteryUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def update_study_card_mastery(card_id: str, payload: StudyCardUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     card = db.get(StudyCard, card_id)
     if not card or card.user_id != user.id:
         raise HTTPException(status_code=404, detail="Study card not found")
-    card.mastery = payload.mastery
+    if payload.front is not None:
+        card.front = payload.front.strip()
+    if payload.back is not None:
+        card.back = payload.back.strip()
+    if payload.mastery is not None:
+        card.mastery = payload.mastery
+        _upsert_progress_record(
+            db=db,
+            user_id=user.id,
+            course_id=card.course_id,
+            item_id=card.id,
+            item_type="study_card",
+            status=_status_for_mastery(payload.mastery),
+            mastery=payload.mastery,
+        )
     db.commit()
     db.refresh(card)
     return serialize_study_card_row(card)
+
+
+@router.delete("/study/cards/{card_id}")
+def delete_study_card(card_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    card = db.get(StudyCard, card_id)
+    if not card or card.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Study card not found")
+    db.query(ProgressRecord).filter(
+        ProgressRecord.user_id == user.id,
+        ProgressRecord.item_type == "study_card",
+        ProgressRecord.item_id == card.id,
+    ).delete(synchronize_session=False)
+    db.delete(card)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/study/questions", response_model=GeneratedTextResponse)
@@ -327,6 +383,32 @@ def list_generated_questions(course_id: str | None = None, user: User = Depends(
         query = query.filter(GeneratedQuestion.course_id == course_id)
     questions = query.order_by(GeneratedQuestion.created_at.desc()).limit(50).all()
     return [serialize_generated_question_row(question) for question in questions]
+
+
+@router.patch("/study/questions/{question_id}", response_model=GeneratedQuestionOut)
+def update_generated_question(question_id: str, payload: GeneratedQuestionUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    question = db.get(GeneratedQuestion, question_id)
+    if not question or question.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Generated question not found")
+    if payload.prompt is not None:
+        question.prompt = payload.prompt.strip()
+    if payload.answer is not None:
+        question.answer = payload.answer.strip()
+    if payload.explanation is not None:
+        question.explanation = payload.explanation.strip()
+    db.commit()
+    db.refresh(question)
+    return serialize_generated_question_row(question)
+
+
+@router.delete("/study/questions/{question_id}")
+def delete_generated_question(question_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    question = db.get(GeneratedQuestion, question_id)
+    if not question or question.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Generated question not found")
+    db.delete(question)
+    db.commit()
+    return {"ok": True}
 
 
 @router.post("/study/questions/{question_id}/wrong-note", response_model=WrongNoteOut)
@@ -367,6 +449,16 @@ def list_wrong_notes(course_id: str | None = None, user: User = Depends(get_curr
     return [serialize_wrong_note_row(note) for note in notes]
 
 
+@router.delete("/study/wrong-notes/{note_id}")
+def delete_wrong_note(note_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    note = db.get(WrongNote, note_id)
+    if not note or note.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Wrong note not found")
+    db.delete(note)
+    db.commit()
+    return {"ok": True}
+
+
 @router.post("/mindmaps", response_model=GeneratedTextResponse)
 async def mindmaps(payload: GenerateRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     context = _context_for_generation(db, user.id, payload.topic, payload.course_id, payload.document_ids)
@@ -374,6 +466,25 @@ async def mindmaps(payload: GenerateRequest, user: User = Depends(get_current_us
     db.add(Mindmap(user_id=user.id, course_id=payload.course_id, title=payload.topic, markdown=markdown))
     db.commit()
     return GeneratedTextResponse(content=markdown)
+
+
+@router.get("/mindmaps", response_model=list[MindmapOut])
+def list_mindmaps(course_id: str | None = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = db.query(Mindmap).filter(Mindmap.user_id == user.id)
+    if course_id:
+        query = query.filter(Mindmap.course_id == course_id)
+    rows = query.order_by(Mindmap.created_at.desc()).limit(50).all()
+    return [_mindmap_row(row) for row in rows]
+
+
+@router.delete("/mindmaps/{mindmap_id}")
+def delete_mindmap(mindmap_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    mindmap = db.get(Mindmap, mindmap_id)
+    if not mindmap or mindmap.user_id != user.id:
+        raise HTTPException(status_code=404, detail="Mindmap not found")
+    db.delete(mindmap)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/progress/overview")
@@ -434,6 +545,43 @@ def _get_course(db: Session, user_id: str, course_id: str) -> Course:
     return course
 
 
+def _status_for_mastery(mastery: int) -> str:
+    if mastery >= 4:
+        return "mastered"
+    if mastery > 0:
+        return "in_progress"
+    return "not_started"
+
+
+def _upsert_progress_record(
+    db: Session,
+    user_id: str,
+    course_id: str | None,
+    item_id: str,
+    item_type: str,
+    status: str,
+    mastery: int,
+) -> ProgressRecord | None:
+    if not course_id:
+        return None
+    record = (
+        db.query(ProgressRecord)
+        .filter(
+            ProgressRecord.user_id == user_id,
+            ProgressRecord.course_id == course_id,
+            ProgressRecord.item_id == item_id,
+            ProgressRecord.item_type == item_type,
+        )
+        .first()
+    )
+    if not record:
+        record = ProgressRecord(user_id=user_id, course_id=course_id, item_id=item_id, item_type=item_type)
+        db.add(record)
+    record.status = status
+    record.mastery = mastery
+    return record
+
+
 def _document_card(db: Session, document: Document, latest_job: IngestionJob | None = None) -> dict:
     if latest_job is None:
         latest_job = (
@@ -444,6 +592,35 @@ def _document_card(db: Session, document: Document, latest_job: IngestionJob | N
         )
     chunk_count = db.query(DocumentChunk).filter(DocumentChunk.document_id == document.id).count()
     return serialize_document_card(document, latest_job, chunk_count)
+
+
+def _delete_course_related_rows(db: Session, user_id: str, course_id: str) -> list[str]:
+    documents = db.query(Document).filter(Document.user_id == user_id, Document.course_id == course_id).all()
+    document_ids = [document.id for document in documents]
+    file_paths = [document.file_path for document in documents]
+
+    chat_sessions = db.query(ChatSession).filter(ChatSession.user_id == user_id, ChatSession.course_id == course_id).all()
+    chat_session_ids = [session.id for session in chat_sessions]
+    if chat_session_ids:
+        db.query(ChatMessage).filter(ChatMessage.session_id.in_(chat_session_ids)).delete(synchronize_session=False)
+    db.query(ChatSession).filter(ChatSession.user_id == user_id, ChatSession.course_id == course_id).delete(
+        synchronize_session=False
+    )
+
+    for model in [StudyCard, GeneratedQuestion, WrongNote, Mindmap, ProgressRecord]:
+        db.query(model).filter(model.user_id == user_id, model.course_id == course_id).delete(synchronize_session=False)
+
+    db.query(DocumentChunk).filter(DocumentChunk.user_id == user_id, DocumentChunk.course_id == course_id).delete(
+        synchronize_session=False
+    )
+    if document_ids:
+        db.query(IngestionJob).filter(IngestionJob.user_id == user_id, IngestionJob.document_id.in_(document_ids)).delete(
+            synchronize_session=False
+        )
+    db.query(Document).filter(Document.user_id == user_id, Document.course_id == course_id).delete(
+        synchronize_session=False
+    )
+    return file_paths
 
 
 def _remove_uploaded_file(file_path: str) -> None:
@@ -471,31 +648,82 @@ def _get_or_create_chat_session(db: Session, user_id: str, payload: ChatRequest)
     return session
 
 
+def _chat_session_row(session: ChatSession) -> dict:
+    return {
+        "id": session.id,
+        "course_id": session.course_id,
+        "title": session.title,
+        "created_at": session.created_at.isoformat(),
+    }
+
+
 def _retrieve_chunks(db: Session, user_id: str, question: str, course_id: str | None, document_ids: list[str]) -> list[RetrievedChunk]:
+    provider = get_embedding_provider()
+    question_vector = provider.embed([question])[0]
+    query = _chunk_retrieval_query(db, user_id, course_id, document_ids)
+    try:
+        distance = DocumentChunk.embedding.cosine_distance(question_vector).label("distance")
+        rows = query.add_columns(distance).order_by(distance.asc()).limit(6).all()
+        return [
+            _retrieved_chunk_from_row(chunk, document, course, 1 - float(distance_value or 0))
+            for chunk, document, course, distance_value in rows
+        ]
+    except Exception:
+        return _retrieve_chunks_in_memory(db, user_id, course_id, document_ids, question_vector)
+
+
+def _chunk_retrieval_query(db: Session, user_id: str, course_id: str | None, document_ids: list[str]):
     query = db.query(DocumentChunk, Document, Course).join(Document, DocumentChunk.document_id == Document.id).join(Course, DocumentChunk.course_id == Course.id)
     query = query.filter(DocumentChunk.user_id == user_id)
     if course_id:
         query = query.filter(DocumentChunk.course_id == course_id)
     if document_ids:
         query = query.filter(DocumentChunk.document_id.in_(document_ids))
+    return query
 
-    provider = HashEmbeddingProvider()
-    question_vector = provider.embed([question])[0]
+
+def _retrieve_chunks_in_memory(
+    db: Session,
+    user_id: str,
+    course_id: str | None,
+    document_ids: list[str],
+    question_vector: list[float],
+) -> list[RetrievedChunk]:
+    query = _chunk_retrieval_query(db, user_id, course_id, document_ids)
     scored = []
     for chunk, document, course in query.limit(500).all():
         scored.append((cosine_similarity(question_vector, vector_values(chunk.embedding)), chunk, document, course))
     scored.sort(key=lambda item: item[0], reverse=True)
-    return [
-        RetrievedChunk(
-            chunk_id=chunk.id,
-            document_title=document.title,
-            course_title=course.title,
-            text=chunk.text,
-            page_number=chunk.page_number,
-            similarity=score,
-        )
-        for score, chunk, document, course in scored[:6]
-    ]
+    return [_retrieved_chunk_from_row(chunk, document, course, score) for score, chunk, document, course in scored[:6]]
+
+
+def _retrieved_chunk_from_row(chunk: DocumentChunk, document: Document, course: Course, similarity: float) -> RetrievedChunk:
+    return RetrievedChunk(
+        chunk_id=chunk.id,
+        document_id=document.id,
+        document_title=document.title,
+        course_title=course.title,
+        text=chunk.text,
+        page_number=chunk.page_number,
+        similarity=similarity,
+    )
+
+
+def _citation_preview(text: str, limit: int = 180) -> str:
+    compact = " ".join(text.split())
+    if len(compact) <= limit:
+        return compact
+    return f"{compact[:limit].rstrip()}..."
+
+
+def _mindmap_row(mindmap: Mindmap) -> dict:
+    return {
+        "id": mindmap.id,
+        "course_id": mindmap.course_id,
+        "title": mindmap.title,
+        "markdown": mindmap.markdown,
+        "created_at": mindmap.created_at.isoformat(),
+    }
 
 
 def _context_for_generation(db: Session, user_id: str, topic: str, course_id: str | None, document_ids: list[str]) -> str:
